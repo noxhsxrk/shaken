@@ -101,6 +101,7 @@ final class WheelController {
             origin.y = min(max(origin.y, f.minY + shelfSpace), f.maxY - Self.diameter)
         }
         panel.setFrameOrigin(origin)
+        restOrigin = origin
         Motion.fadeIn(panel)
         openedAt = Date()
         NSAccessibility.post(element: view, notification: .layoutChanged)
@@ -112,6 +113,61 @@ final class WheelController {
     }
 
     /// Swaps in another wheel without moving or re-animating the panel (⌘← / ⌘→).
+    // MARK: sliding between wheels
+
+    /// Where the panel sits when it isn't being dragged sideways.
+    private var restOrigin = NSPoint.zero
+    private var sliding = false
+    static let slideDistance: CGFloat = 80
+
+    /// Follows the fingers during a two-finger swipe, with some resistance.
+    func follow(_ dx: CGFloat) {
+        guard !sliding, !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion else { return }
+        let limit = Self.slideDistance * 1.4
+        let x = limit * tanh(dx / limit)   // eases off as it goes further
+        panel.setFrameOrigin(NSPoint(x: restOrigin.x + x, y: restOrigin.y))
+        panel.alphaValue = 1 - min(abs(x) / (limit * 2.2), 0.45)
+    }
+
+    /// The swipe wasn't far enough: spring back into place.
+    func settle() {
+        guard !sliding else { return }
+        NSAnimationContext.runAnimationGroup { ctx in
+            ctx.duration = 0.22
+            ctx.timingFunction = CAMediaTimingFunction(controlPoints: 0.2, 0.9, 0.25, 1.1)
+            panel.animator().setFrameOrigin(restOrigin)
+            panel.animator().alphaValue = 1
+        }
+    }
+
+    /// Slides the current wheel out and the next one in. `direction` 1 = next (moves left), -1 = previous.
+    func slide(direction: Int, swap: @escaping () -> Void) {
+        if NSWorkspace.shared.accessibilityDisplayShouldReduceMotion || !panel.isVisible {
+            swap()
+            panel.setFrameOrigin(restOrigin)
+            panel.alphaValue = 1
+            return
+        }
+        sliding = true
+        let d = CGFloat(direction) * Self.slideDistance
+        NSAnimationContext.runAnimationGroup({ ctx in
+            ctx.duration = 0.11
+            ctx.timingFunction = CAMediaTimingFunction(name: .easeIn)
+            panel.animator().setFrameOrigin(NSPoint(x: restOrigin.x - d, y: restOrigin.y))
+            panel.animator().alphaValue = 0
+        }, completionHandler: { [weak self] in
+            guard let self else { return }
+            swap()
+            self.panel.setFrameOrigin(NSPoint(x: self.restOrigin.x + d, y: self.restOrigin.y))
+            NSAnimationContext.runAnimationGroup({ ctx in
+                ctx.duration = 0.24
+                ctx.timingFunction = CAMediaTimingFunction(controlPoints: 0.2, 0.9, 0.25, 1.05)
+                self.panel.animator().setFrameOrigin(self.restOrigin)
+                self.panel.animator().alphaValue = 1
+            }, completionHandler: { [weak self] in self?.sliding = false })
+        })
+    }
+
     func replace(slots: [ResolvedSlot], summary: String, shelfCount: Int, page: WheelPageInfo?) {
         view.configure(slots: slots, summary: summary, mode: mode, shelfCount: shelfCount)
         view.page = page
@@ -121,6 +177,7 @@ final class WheelController {
     func key(_ k: WheelKeys.Key) { view.handleKey(k) }
 
     func close() {
+        sliding = false
         poll?.invalidate()
         poll = nil
         panel.orderOut(nil)
@@ -161,6 +218,8 @@ final class WheelController {
     }
 
     fileprivate func swiped(next: Bool) { delegate?.wheelSwipe(next: next) }
+    fileprivate func swipeFollow(_ dx: CGFloat) { follow(dx) }
+    fileprivate func swipeCancelled() { settle() }
 
     fileprivate func hoverChanged(_ slot: ResolvedSlot?) { delegate?.wheelHover(slot) }
 
@@ -573,7 +632,12 @@ final class WheelView: NSView {
         guard mode == .click, submenu == nil else { return super.scrollWheel(with: event) }
         if event.momentumPhase != [] { return }
         if event.phase == .began || event.phase == .mayBegin { swipeX = 0; swipeDone = false }
-        if event.phase == .ended || event.phase == .cancelled { swipeX = 0; swipeDone = false; return }
+        if event.phase == .ended || event.phase == .cancelled {
+            // Let go before the switch point: spring back.
+            if !swipeDone { controller?.swipeCancelled() }
+            swipeX = 0; swipeDone = false
+            return
+        }
         guard event.hasPreciseScrollingDeltas else {
             // A plain mouse wheel: each notch with horizontal movement flips once.
             if abs(event.scrollingDeltaX) > abs(event.scrollingDeltaY), event.scrollingDeltaX != 0 {
@@ -583,8 +647,11 @@ final class WheelView: NSView {
         }
         // Only count gestures that are mostly sideways.
         guard abs(event.scrollingDeltaX) >= abs(event.scrollingDeltaY) else { return }
+        guard !swipeDone else { return }
         swipeX += event.scrollingDeltaX
-        if !swipeDone && abs(swipeX) > 30 {
+        // The wheel follows the fingers, then slides on to the next wheel past the switch point.
+        controller?.swipeFollow(swipeX)
+        if abs(swipeX) > 70 {
             swipeDone = true
             controller?.swiped(next: swipeX < 0)
         }

@@ -215,9 +215,13 @@ final class AppController: NSObject, WheelDelegate, ChipDelegate, ShelfTrayDeleg
         guard wheel.isVisible, wheel.mode == .click else { return }
         switch k {
         case .nextWheel, .previousWheel:
-            guard pages.count > 1 else { return }
+            guard pages.count > 1 else { wheel.settle(); return }
             pageIndex = (pageIndex + (k.isNext ? 1 : -1) + pages.count) % pages.count
-            wheel.replace(slots: layoutPage(pageIndex), summary: clickSummary, shelfCount: shelf.items.count, page: pageLabel)
+            let slots = layoutPage(pageIndex), page = pageLabel
+            wheel.slide(direction: k.isNext ? 1 : -1) { [weak self] in
+                guard let self else { return }
+                self.wheel.replace(slots: slots, summary: self.clickSummary, shelfCount: self.shelf.items.count, page: page)
+            }
         default:
             wheel.key(k)
         }
