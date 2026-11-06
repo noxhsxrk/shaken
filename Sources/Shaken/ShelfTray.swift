@@ -13,6 +13,7 @@ protocol ShelfTrayDelegate: AnyObject {
 /// Each tile drags out on its own; the first tile drags everything.
 final class ShelfTrayController {
     weak var delegate: ShelfTrayDelegate?
+    weak var ownDrag: DragMonitor?
     private let panel = FloatingPanel(size: NSSize(width: 360, height: 118))
     let effect = NSVisualEffectView()
     private(set) var isDragging = false
@@ -262,8 +263,16 @@ final class ShelfTileView: NSView, NSDraggingSource {
     }
 
     func draggingSession(_ session: NSDraggingSession, sourceOperationMaskFor context: NSDraggingContext) -> NSDragOperation {
-        // Copy: the shelved file stays where it is.
-        context == .outsideApplication ? [.copy, .generic] : []
+        // Copy: the shelved file stays where it is. Inside Shaken, the wheel can take it too.
+        [.copy, .generic]
+    }
+
+    func draggingSession(_ session: NSDraggingSession, willBeginAt screenPoint: NSPoint) {
+        tray?.ownDrag?.ownDragBegan()
+    }
+
+    func draggingSession(_ session: NSDraggingSession, movedTo screenPoint: NSPoint) {
+        tray?.ownDrag?.ownDragMoved(to: screenPoint)
     }
 
     func draggingSession(_ session: NSDraggingSession, endedAt screenPoint: NSPoint, operation: NSDragOperation) {

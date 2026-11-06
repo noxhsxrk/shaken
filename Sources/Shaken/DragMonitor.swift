@@ -48,6 +48,17 @@ final class DragMonitor {
         if let m = NSEvent.addGlobalMonitorForEvents(matching: mask, handler: handler) { monitors.append(m) }
     }
 
+    /// Drags that start in Shaken's own windows (the chip, the shelf tray) never reach the
+    /// global monitors, so their dragging sessions report positions here instead.
+    func ownDragBegan() {
+        dragDetector.reset()
+    }
+
+    func ownDragMoved(to p: NSPoint) {
+        guard !isPaused, modifierSatisfied() else { return }
+        if dragDetector.add(t: ProcessInfo.processInfo.systemUptime, x: p.x, y: p.y) { onShake?(p) }
+    }
+
     private func mouseDown() {
         let p = NSEvent.mouseLocation
         startChangeCount = NSPasteboard(name: .drag).changeCount

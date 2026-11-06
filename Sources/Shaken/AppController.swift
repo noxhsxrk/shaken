@@ -55,6 +55,8 @@ final class AppController: NSObject, WheelDelegate, ChipDelegate, ShelfTrayDeleg
         wheel.delegate = self
         chip.delegate = self
         tray.delegate = self
+        chip.ownDrag = monitor
+        tray.ownDrag = monitor
         escape.handler = { [weak self] in self?.escapePressed() }
         wheelKeys.handler = { [weak self] k in self?.wheelKey(k) }
 

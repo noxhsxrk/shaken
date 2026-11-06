@@ -17,6 +17,8 @@ final class ChipController {
     }
 
     weak var delegate: ChipDelegate?
+    /// Fed with the chip's own drag positions so a shake can reopen the wheel.
+    weak var ownDrag: DragMonitor?
     private let panel = FloatingPanel(size: NSSize(width: 300, height: 64))
     let view = ChipView(frame: NSRect(x: 0, y: 0, width: 300, height: 64))
     private let effect = NSVisualEffectView()
@@ -261,7 +263,17 @@ final class ChipView: NSView, NSDraggingSource {
 
     func draggingSession(_ session: NSDraggingSession, sourceOperationMaskFor context: NSDraggingContext) -> NSDragOperation {
         // Copy only: the result stays put, so undo and further drags still work.
-        context == .outsideApplication ? [.copy, .generic] : []
+        // Inside Shaken the wheel accepts it, so a result can be chained into another command.
+        [.copy, .generic]
+    }
+
+    func draggingSession(_ session: NSDraggingSession, willBeginAt screenPoint: NSPoint) {
+        controller?.ownDrag?.ownDragBegan()
+    }
+
+    // Shake while dragging the chip to open the wheel again and chain another command.
+    func draggingSession(_ session: NSDraggingSession, movedTo screenPoint: NSPoint) {
+        controller?.ownDrag?.ownDragMoved(to: screenPoint)
     }
 
     func ignoreModifierKeys(for session: NSDraggingSession) -> Bool { true }
