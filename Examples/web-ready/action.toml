@@ -1,6 +1,5 @@
 # Resize to 1920 px, drop metadata, then convert to WebP with cwebp.
 name = "Web ready"
-name_th = "เตรียมขึ้นเว็บ"
 icon = "globe"
 accepts = ["public.image"]
 requires = ["cwebp"]

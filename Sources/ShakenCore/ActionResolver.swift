@@ -12,6 +12,12 @@ public struct ResolvedSlot: Equatable, Identifiable {
     /// Shown under the title, e.g. how to install a missing tool.
     public var note: String?
     public var children: [ResolvedSlot]
+
+    public init(id: String, kind: SlotKind, title: String, icon: String, target: String, actionID: String? = nil,
+                enabled: Bool = true, note: String? = nil, children: [ResolvedSlot] = []) {
+        self.id = id; self.kind = kind; self.title = title; self.icon = icon; self.target = target
+        self.actionID = actionID; self.enabled = enabled; self.note = note; self.children = children
+    }
 }
 
 /// Filters actions by what is dragged and lays out the wheel (R5).
@@ -53,15 +59,31 @@ public enum ActionResolver {
         }
     }
 
-    public static func layout(payload: DragPayload, actions: [ActionManifest], settings: ShakenSettings) -> [ResolvedSlot] {
+    /// Places for auto slots that no command fits, so the wheel isn't half empty
+    /// when it is opened without dragging anything.
+    public static func defaultFallbacks() -> [Slot] {
+        [
+            Slot(id: "fallback-downloads", kind: .folder, title: L("Downloads"), icon: "arrow.down.circle", target: ShakenPaths.downloads.path),
+            Slot(id: "fallback-desktop", kind: .folder, title: L("Desktop"), icon: "menubar.dock.rectangle", target: ShakenPaths.desktop.path),
+        ]
+    }
+
+    /// - Parameter fallbacks: used, in order, for auto slots left over after the suggestions run out.
+    /// - Parameter slots: the wheel to lay out; defaults to the main one (`settings.slots`).
+    public static func layout(payload: DragPayload, actions: [ActionManifest], settings: ShakenSettings, fallbacks: [Slot] = [],
+                              slots wheelSlots: [Slot]? = nil) -> [ResolvedSlot] {
+        let wheel = wheelSlots ?? settings.slots
         let byID = Dictionary(actions.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
         // Actions the user pinned to a slot shouldn't appear twice.
         var pinned = Set<String>()
-        for s in settings.slots {
+        for s in wheel {
             if s.kind == .action { pinned.insert(s.target) }
             for c in s.children where c.kind == .action { pinned.insert(c.target) }
         }
         var queue = suggestions(for: payload, actions: actions, settings: settings).filter { !pinned.contains($0.id) }[...]
+        // Skip fallback places the user already put on the wheel.
+        let fixedTargets = Set(wheel.filter { $0.kind == .folder }.map(\.target))
+        var spare = fallbacks.filter { !fixedTargets.contains($0.target) }[...]
 
         let hasFiles = payload.items.contains { [.file, .folder, .promise].contains($0.kind) }
         let hasLink = payload.items.contains { $0.kind == .link }
@@ -76,6 +98,10 @@ public enum ActionResolver {
             case .auto:
                 if let a = queue.popFirst() {
                     fill(&r, with: a)
+                } else if let f = spare.popFirst() {
+                    var resolved = resolve(f)
+                    resolved.id = s.id
+                    return resolved
                 } else {
                     r.kind = .empty; r.enabled = false
                 }
@@ -92,7 +118,7 @@ public enum ActionResolver {
                 }
             case .app:
                 if r.title.isEmpty { r.title = URL(fileURLWithPath: s.target).deletingPathExtension().lastPathComponent }
-                if r.icon.isEmpty { r.icon = "app" }
+                if r.icon.isEmpty { r.icon = s.target }   // a path: the wheel draws the app's own icon
                 r.enabled = payload.isEmpty || hasFiles || hasLink
             case .web:
                 if r.title.isEmpty { r.title = URL(string: s.target)?.host ?? s.target }
@@ -106,6 +132,43 @@ public enum ActionResolver {
                 if r.icon.isEmpty { r.icon = "circle.grid.2x2" }
                 r.children = s.children.map(resolve)
                 r.enabled = r.children.contains { $0.enabled }
+            case .file:
+                if r.title.isEmpty { r.title = URL(fileURLWithPath: s.target).lastPathComponent }
+                if r.icon.isEmpty { r.icon = s.target }
+                r.enabled = payload.isEmpty
+            case .shortcut:
+                if r.title.isEmpty { r.title = s.target }
+                if r.icon.isEmpty { r.icon = "square.2.layers.3d" }
+            case .snippet:
+                if r.title.isEmpty { r.title = String((s.target.split(whereSeparator: \.isNewline).first.map(String.init) ?? s.target).prefix(30)) }
+                if r.icon.isEmpty { r.icon = "text.quote" }
+                r.enabled = payload.isEmpty
+            case .keys:
+                if r.title.isEmpty { r.title = KeyCombo(s.target)?.display ?? s.target }
+                if r.icon.isEmpty { r.icon = "keyboard" }
+                r.enabled = payload.isEmpty
+            case .workflow:
+                if r.icon.isEmpty { r.icon = "list.bullet.rectangle" }
+                if r.title.isEmpty { r.title = L("Workflow") }
+                r.children = s.children.map(resolve).map { var c = $0; c.enabled = true; return c }
+                r.enabled = payload.isEmpty && !r.children.isEmpty
+            case .shell, .applescript:
+                if r.title.isEmpty { r.title = s.kind == .shell ? L("Shell script") : L("AppleScript") }
+                if r.icon.isEmpty { r.icon = s.kind == .shell ? "terminal" : "applescript" }
+            case .system:
+                let c = SystemControl(rawValue: s.target)
+                if r.title.isEmpty { r.title = c?.title ?? s.target }
+                if r.icon.isEmpty { r.icon = c?.icon ?? "gearshape" }
+                r.enabled = payload.isEmpty
+            case .delay:
+                r.title = L("Wait %@ s", s.target)
+                r.icon = "hourglass"
+                r.enabled = false
+            case .switcher:
+                // Children (the running apps) are filled in by the app when the wheel opens.
+                if r.icon.isEmpty { r.icon = "square.on.square" }
+                if r.title.isEmpty { r.title = L("Switch app") }
+                r.enabled = payload.isEmpty || hasFiles
             }
             return r
         }
@@ -120,6 +183,6 @@ public enum ActionResolver {
             if !missing.isEmpty { r.note = L("Install: %@", a.installHint) }
         }
 
-        return settings.slots.map(resolve)
+        return wheel.map(resolve)
     }
 }

@@ -35,6 +35,8 @@ final class SettingsModel: ObservableObject {
     @Published var packs: [PackManager.Pack] = []
     @Published var packBusy = false
     @Published var packMessage: String?
+    /// Which wheel the Wheel tab edits: nil = main, otherwise an app's bundle id.
+    @Published var wheelScope: String?
 
     init(app: AppController) {
         self.app = app
@@ -113,85 +115,245 @@ struct SettingsView: View {
 
 // MARK: - Wheel (R3)
 
+extension SettingsModel {
+    /// The wheel being edited: nil = main wheel, otherwise an app's bundle id.
+    var editingSlots: [Slot] {
+        if let id = wheelScope, let w = settings.appWheels[id] { return w.slots }
+        return settings.slots
+    }
+
+    func updateSlots(_ change: @escaping (inout [Slot]) -> Void) {
+        let scope = wheelScope
+        update { s in
+            if let id = scope, var w = s.appWheels[id] { change(&w.slots); s.appWheels[id] = w } else { change(&s.slots) }
+        }
+    }
+
+    func addAppWheel() {
+        let p = NSOpenPanel()
+        p.allowedContentTypes = [.application]
+        p.directoryURL = URL(fileURLWithPath: "/Applications")
+        guard p.runModal() == .OK, let url = p.url, let id = Bundle(url: url)?.bundleIdentifier else { return }
+        let name = FileManager.default.displayName(atPath: url.path).replacingOccurrences(of: ".app", with: "")
+        update { s in if s.appWheels[id] == nil { s.appWheels[id] = AppWheel(name: name, slots: s.slots) } }
+        wheelScope = id
+    }
+
+    func exportWheel() {
+        let name = wheelScope.flatMap { settings.appWheels[$0]?.name } ?? L("My wheel")
+        let preset = WheelPreset(name: name, app: wheelScope, slots: editingSlots)
+        let p = NSSavePanel()
+        p.nameFieldStringValue = name + "." + WheelPreset.fileExtension
+        p.allowedContentTypes = [UTType(filenameExtension: WheelPreset.fileExtension) ?? .json]
+        guard p.runModal() == .OK, let url = p.url else { return }
+        do { try preset.encoded().write(to: url, options: .atomic) } catch { NSAlert(error: error).runModal() }
+    }
+
+    func importWheelFile() {
+        let p = NSOpenPanel()
+        p.allowedContentTypes = [UTType(filenameExtension: WheelPreset.fileExtension) ?? .json, .json]
+        guard p.runModal() == .OK, let url = p.url else { return }
+        do { importWheel(try WheelPreset.decode(Data(contentsOf: url))) } catch { NSAlert(error: error).runModal() }
+    }
+
+    func importWheelFromURL() {
+        let alert = NSAlert()
+        alert.messageText = L("Import a wheel from a web address")
+        alert.informativeText = L("Paste a link to a .shakenwheel file (https only).")
+        let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 360, height: 24))
+        field.placeholderString = "https://…/My.shakenwheel"
+        alert.accessoryView = field
+        alert.addButton(withTitle: L("Import"))
+        alert.addButton(withTitle: L("Cancel"))
+        guard alert.runModal() == .alertFirstButtonReturn,
+              let url = URL(string: field.stringValue.trimmingCharacters(in: .whitespaces)), url.scheme == "https" else { return }
+        Task { @MainActor in
+            do {
+                let (data, response) = try await URLSession.shared.data(from: url)
+                guard (response as? HTTPURLResponse)?.statusCode == 200, data.count < 1_000_000 else {
+                    throw ShakenError.other(L("Couldn't download the wheel"))
+                }
+                importWheel(try WheelPreset.decode(data))
+            } catch { NSAlert(error: error).runModal() }
+        }
+    }
+
+    /// Shows everything in the wheel that runs code or types, then asks where to put it.
+    func importWheel(_ preset: WheelPreset) {
+        let alert = NSAlert()
+        alert.messageText = L("Import “%@”?", preset.name)
+        let risky = preset.sensitiveSlots
+        if risky.isEmpty {
+            alert.informativeText = L("It only opens apps, files, folders and websites.")
+        } else {
+            alert.alertStyle = .warning
+            alert.informativeText = L("Check these before importing. Scripts run as you and can read and change any of your files.")
+            let text = risky.map { slot -> String in
+                let head = "[" + kindTitle(slot.kind) + "]" + (slot.title.isEmpty ? "" : " " + slot.title)
+                return head + "\n" + slot.target
+            }.joined(separator: "\n\n")
+            let scroll = NSScrollView(frame: NSRect(x: 0, y: 0, width: 440, height: 200))
+            scroll.hasVerticalScroller = true
+            let tv = NSTextView(frame: scroll.bounds)
+            tv.string = text
+            tv.isEditable = false
+            tv.font = .monospacedSystemFont(ofSize: 11, weight: .regular)
+            scroll.documentView = tv
+            alert.accessoryView = scroll
+        }
+        let appName = preset.app.flatMap { NSWorkspace.shared.urlForApplication(withBundleIdentifier: $0) }
+            .map { FileManager.default.displayName(atPath: $0.path).replacingOccurrences(of: ".app", with: "") }
+        if let appName { alert.addButton(withTitle: L("Use in %@", appName)) }
+        alert.addButton(withTitle: L("Replace Main Wheel"))
+        alert.addButton(withTitle: L("Cancel"))
+        let r = alert.runModal()
+        if let appName, let id = preset.app, r == .alertFirstButtonReturn {
+            update { $0.appWheels[id] = AppWheel(name: appName, slots: preset.slots) }
+            wheelScope = id
+        } else if r == (appName == nil ? .alertFirstButtonReturn : .alertSecondButtonReturn) {
+            update { $0.slots = preset.slots }
+            wheelScope = nil
+        }
+    }
+
+    func removeAppWheel() {
+        guard let id = wheelScope else { return }
+        wheelScope = nil
+        update { $0.appWheels[id] = nil }
+    }
+}
+
 struct WheelTab: View {
     @EnvironmentObject var model: SettingsModel
     @State private var selected: String?
     @State private var selectedChild: String?
 
     var body: some View {
-        HStack(alignment: .top, spacing: 24) {
-            VStack {
-                WheelPreview(slots: model.settings.slots, selected: $selected) { a, b in
-                    model.update { s in
-                        guard let i = s.slots.firstIndex(where: { $0.id == a }), let j = s.slots.firstIndex(where: { $0.id == b }) else { return }
-                        s.slots.swapAt(i, j)
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Picker(L("Wheel"), selection: $model.wheelScope) {
+                    Text(L("Main wheel")).tag(String?.none)
+                    ForEach(model.settings.appWheels.sorted { $0.value.name < $1.value.name }, id: \.key) { id, w in
+                        Text(L("In %@", w.name)).tag(String?.some(id))
                     }
                 }
-                Text(L("Drag one slot onto another to swap them. Positions stay fixed so your hand can learn them."))
-                    .font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.center).frame(width: 280)
-                Button(L("Reset to Suggestions")) { model.update { $0.slots = ShakenSettings.defaultSlots() } }
-                    .padding(.top, 6)
+                .frame(maxWidth: 300)
+                Button(L("Add App Wheel…")) { model.addAppWheel() }
+                if model.wheelScope != nil {
+                    Button(L("Remove"), role: .destructive) { model.removeAppWheel() }
+                }
+                Spacer()
+                Menu(L("Share")) {
+                    Button(L("Export This Wheel…")) { model.exportWheel() }
+                    Divider()
+                    Button(L("Import Wheel File…")) { model.importWheelFile() }
+                    Button(L("Import Wheel from URL…")) { model.importWheelFromURL() }
+                }
+                .frame(width: 90)
             }
+            Text(model.wheelScope == nil
+                 ? L("Used while dragging, and without dragging in apps that have no wheel of their own.")
+                 : L("Shown instead of the main wheel when this app is in front and you open the wheel without dragging."))
+                .font(.caption).foregroundStyle(.secondary)
             Divider()
-            if let id = selected, let i = model.settings.slots.firstIndex(where: { $0.id == id }) {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text(L("Slot %@", String(i + 1))).font(.headline)
-                        SlotFields(slot: slotBinding(i), actions: model.actions, allowSubmenu: true)
-                        if model.settings.slots[i].kind == .submenu {
-                            Divider()
-                            ChildrenEditor(parent: i, selected: $selectedChild)
+            HStack(alignment: .top, spacing: 24) {
+                VStack {
+                    WheelPreview(slots: model.editingSlots, selected: $selected) { a, b in
+                        model.updateSlots { slots in
+                            guard let i = slots.firstIndex(where: { $0.id == a }), let j = slots.firstIndex(where: { $0.id == b }) else { return }
+                            slots.swapAt(i, j)
                         }
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    Text(L("Drag one slot onto another to swap them. Positions stay fixed so your hand can learn them."))
+                        .font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.center).frame(width: 280)
+                    Button(L("Reset to Suggestions")) { model.updateSlots { $0 = ShakenSettings.defaultSlots() } }
+                        .padding(.top, 6)
                 }
-            } else {
-                Text(L("Pick a slot to change it."))
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                Divider()
+                if let id = selected, let i = model.editingSlots.firstIndex(where: { $0.id == id }) {
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 12) {
+                            HStack {
+                                Text(L("Slot %@", String(i + 1))).font(.headline)
+                                Spacer()
+                                Button(L("Run Now")) { model.app.runFromSettings(model.editingSlots[i]) }
+                                    .disabled(![.app, .web, .folder, .file, .shortcut, .snippet, .keys, .workflow, .shell, .applescript, .system, .switcher]
+                                        .contains(model.editingSlots[i].kind))
+                                    .help(L("Do what clicking this slot does"))
+                            }
+                            SlotFields(slot: slotBinding(i), actions: model.actions, allowed: SlotKind.wheelKinds)
+                            let kind = model.editingSlots[i].kind
+                            if kind == .submenu || kind == .workflow {
+                                Divider()
+                                ChildrenEditor(parent: i, isWorkflow: kind == .workflow, selected: $selectedChild)
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                } else {
+                    Text(L("Pick a slot to change it."))
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
             }
         }
-        .onAppear { if selected == nil { selected = model.settings.slots.first?.id } }
+        .onAppear { if selected == nil { selected = model.editingSlots.first?.id } }
+        .onChange(of: model.wheelScope) { _ in selected = model.editingSlots.first?.id }
     }
 
     func slotBinding(_ i: Int) -> Binding<Slot> {
-        Binding(get: { model.settings.slots.indices.contains(i) ? model.settings.slots[i] : Slot(kind: .empty) },
-                set: { v in model.update { if $0.slots.indices.contains(i) { $0.slots[i] = v } } })
+        Binding(get: { model.editingSlots.indices.contains(i) ? model.editingSlots[i] : Slot(kind: .empty) },
+                set: { v in model.updateSlots { if $0.indices.contains(i) { $0[i] = v } } })
     }
 }
 
 struct ChildrenEditor: View {
     @EnvironmentObject var model: SettingsModel
     let parent: Int
+    let isWorkflow: Bool
     @Binding var selected: String?
 
-    var children: [Slot] { model.settings.slots.indices.contains(parent) ? model.settings.slots[parent].children : [] }
+    var children: [Slot] { model.editingSlots.indices.contains(parent) ? model.editingSlots[parent].children : [] }
+
+    func move(_ j: Int, by d: Int) {
+        model.updateSlots { slots in
+            let k = j + d
+            guard slots[parent].children.indices.contains(j), slots[parent].children.indices.contains(k) else { return }
+            slots[parent].children.swapAt(j, k)
+        }
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text(L("Submenu items")).font(.subheadline.bold())
+                Text(isWorkflow ? L("Steps, run in order") : L("Submenu items")).font(.subheadline.bold())
                 Spacer()
                 Button {
-                    model.update { $0.slots[parent].children.append(Slot(kind: .auto)) }
+                    model.updateSlots { $0[parent].children.append(Slot(kind: isWorkflow ? .app : .auto)) }
                 } label: { Image(systemName: "plus") }
-                    .disabled(children.count >= ShakenSettings.maxChildren)
+                    .disabled(children.count >= (isWorkflow ? ShakenSettings.maxWorkflowSteps : ShakenSettings.maxChildren))
                     .help(L("Add item"))
             }
             ForEach(Array(children.enumerated()), id: \.element.id) { j, child in
                 DisclosureGroup(isExpanded: Binding(get: { selected == child.id }, set: { selected = $0 ? child.id : nil })) {
                     SlotFields(slot: Binding(
-                        get: { model.settings.slots[parent].children.indices.contains(j) ? model.settings.slots[parent].children[j] : child },
-                        set: { v in model.update { if $0.slots[parent].children.indices.contains(j) { $0.slots[parent].children[j] = v } } }
-                    ), actions: model.actions, allowSubmenu: false)
+                        get: { model.editingSlots[parent].children.indices.contains(j) ? model.editingSlots[parent].children[j] : child },
+                        set: { v in model.updateSlots { if $0[parent].children.indices.contains(j) { $0[parent].children[j] = v } } }
+                    ), actions: model.actions, allowed: isWorkflow ? SlotKind.workflowSteps : SlotKind.wheelKinds.filter { !$0.isContainer })
                     .padding(.leading, 8)
                 } label: {
                     HStack {
-                        Image(systemName: child.icon.isEmpty ? "circle.dashed" : child.icon)
-                        Text(child.title.isEmpty ? kindTitle(child.kind) : child.title)
+                        SlotIcon(name: SlotBubble(slot: child, isSelected: false).icon, size: 13)
+                        Text(isWorkflow ? "\(j + 1). " + SlotBubble(slot: child, isSelected: false).title : SlotBubble(slot: child, isSelected: false).title)
                         Spacer()
+                        if isWorkflow {
+                            Button { move(j, by: -1) } label: { Image(systemName: "chevron.up") }
+                                .buttonStyle(.borderless).disabled(j == 0).help(L("Move up"))
+                            Button { move(j, by: 1) } label: { Image(systemName: "chevron.down") }
+                                .buttonStyle(.borderless).disabled(j == children.count - 1).help(L("Move down"))
+                        }
                         Button(role: .destructive) {
-                            model.update { $0.slots[parent].children.removeAll { $0.id == child.id } }
+                            model.updateSlots { $0[parent].children.removeAll { $0.id == child.id } }
                         } label: { Image(systemName: "minus.circle") }.buttonStyle(.borderless).help(L("Remove"))
                     }
                 }
@@ -207,20 +369,44 @@ func kindTitle(_ k: SlotKind) -> String {
     case .app: return L("App")
     case .web: return L("Website")
     case .folder: return L("Folder")
+    case .file: return L("File")
     case .action: return L("Command")
     case .submenu: return L("Submenu")
+    case .shortcut: return L("Apple Shortcut")
+    case .snippet: return L("Text snippet")
+    case .keys: return L("Keyboard shortcut")
+    case .workflow: return L("Workflow")
+    case .switcher: return L("App switcher")
+    case .shell: return L("Shell script")
+    case .applescript: return L("AppleScript")
+    case .system: return L("System control")
+    case .delay: return L("Wait")
+    }
+}
+
+/// An SF Symbol, or a file's own icon when `name` is a path.
+struct SlotIcon: View {
+    let name: String
+    var size: CGFloat = 18
+    var body: some View {
+        if name.hasPrefix("/") {
+            Image(nsImage: NSWorkspace.shared.icon(forFile: name)).resizable().frame(width: size * 1.5, height: size * 1.5)
+        } else {
+            Image(systemName: name).font(.system(size: size))
+        }
     }
 }
 
 struct SlotFields: View {
     @Binding var slot: Slot
     let actions: [ActionManifest]
-    let allowSubmenu: Bool
+    let allowed: [SlotKind]
+    @State private var shortcutNames: [String] = []
 
     var body: some View {
         Form {
             Picker(L("Shows"), selection: $slot.kind) {
-                ForEach(SlotKind.allCases.filter { allowSubmenu || $0 != .submenu }, id: \.self) { Text(kindTitle($0)).tag($0) }
+                ForEach(allowed, id: \.self) { Text(kindTitle($0)).tag($0) }
             }
             if slot.kind == .auto {
                 Text(L("Filled with a command that fits what you're dragging.")).font(.caption).foregroundStyle(.secondary)
@@ -237,7 +423,7 @@ struct SlotFields: View {
                 HStack {
                     Text(slot.target.isEmpty ? L("No app chosen") : URL(fileURLWithPath: slot.target).deletingPathExtension().lastPathComponent)
                     Spacer()
-                    Button(L("Choose App…")) { if let u = choose(app: true) { slot.target = u.path } }
+                    Button(L("Choose App…")) { if let u = choose(.app) { slot.target = u.path } }
                 }
                 Text(L("Dropped files or links open in this app.")).font(.caption).foregroundStyle(.secondary)
             case .web:
@@ -247,26 +433,88 @@ struct SlotFields: View {
                 HStack {
                     Text(slot.target.isEmpty ? L("No folder chosen") : slot.target).lineLimit(1).truncationMode(.middle)
                     Spacer()
-                    Button(L("Choose Folder…")) { if let u = choose(app: false) { slot.target = u.path } }
+                    Button(L("Choose Folder…")) { if let u = choose(.folder) { slot.target = u.path } }
                 }
                 Text(L("Dropped files are copied here (undoable)."))
                     .font(.caption).foregroundStyle(.secondary)
+            case .file:
+                HStack {
+                    Text(slot.target.isEmpty ? L("No file chosen") : slot.target).lineLimit(1).truncationMode(.middle)
+                    Spacer()
+                    Button(L("Choose File…")) { if let u = choose(.file) { slot.target = u.path } }
+                }
             case .action:
                 Picker(L("Command"), selection: $slot.target) {
                     Text(L("Choose…")).tag("")
                     ForEach(actions) { a in Text(a.displayName).tag(a.id) }
                 }
+            case .shortcut:
+                HStack {
+                    TextField(L("Shortcut name"), text: $slot.target)
+                    Menu(L("Pick")) {
+                        ForEach(shortcutNames, id: \.self) { n in Button(n) { slot.target = n } }
+                    }
+                    .frame(width: 70)
+                    .disabled(shortcutNames.isEmpty)
+                }
+                .task { shortcutNames = await Shortcuts.list() }
+                Text(L("Runs from the Shortcuts app. Things you drag onto it become its input."))
+                    .font(.caption).foregroundStyle(.secondary)
+            case .snippet:
+                TextEditor(text: $slot.target)
+                    .font(.body)
+                    .frame(minHeight: 70)
+                    .overlay(RoundedRectangle(cornerRadius: 5).stroke(.quaternary))
+                Text(L("Pasted where you're typing. Needs Accessibility permission the first time."))
+                    .font(.caption).foregroundStyle(.secondary)
+            case .keys:
+                HStack {
+                    TextField(L("Keys"), text: $slot.target, prompt: Text("cmd+shift+4"))
+                    Text(KeyCombo(slot.target)?.display ?? "—").font(.system(.body, design: .rounded)).frame(minWidth: 60)
+                }
+                Text(L("Pressed in the app in front, e.g. cmd+shift+4, ctrl+opt+t, f5. Needs Accessibility permission the first time."))
+                    .font(.caption).foregroundStyle(.secondary)
+            case .shell, .applescript:
+                TextEditor(text: $slot.target)
+                    .font(.system(.body, design: .monospaced))
+                    .frame(minHeight: 110)
+                    .overlay(RoundedRectangle(cornerRadius: 5).stroke(.quaternary))
+                Text(slot.kind == .shell
+                     ? L("Runs with zsh in your home folder. Dragged files are $1, $2…; dragged text is in $SHAKEN_TEXT.")
+                     : L("Dragged files are passed to on run argv."))
+                    .font(.caption).foregroundStyle(.secondary)
+            case .system:
+                Picker(L("Does"), selection: $slot.target) {
+                    Text(L("Choose…")).tag("")
+                    ForEach(SystemControl.allCases, id: \.rawValue) { c in
+                        Label(c.title, systemImage: c.icon).tag(c.rawValue)
+                    }
+                }
+                if SystemControl(rawValue: slot.target)?.needsAccessibility == true {
+                    Text(L("Sent as a key press, so it needs Accessibility permission the first time."))
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+            case .delay:
+                TextField(L("Seconds"), text: $slot.target, prompt: Text("0.5"))
+            case .workflow:
+                Text(L("Runs each step below in order: open apps, links and files, run Shortcuts and scripts, paste text, press keys."))
+                    .font(.caption).foregroundStyle(.secondary)
+            case .switcher:
+                Text(L("Opens a ring of your recently used apps. Drop files on one to open them in it."))
+                    .font(.caption).foregroundStyle(.secondary)
             default:
                 EmptyView()
             }
         }
     }
 
-    func choose(app: Bool) -> URL? {
+    enum Pick { case app, folder, file }
+
+    func choose(_ what: Pick) -> URL? {
         let p = NSOpenPanel()
-        p.canChooseDirectories = !app
-        p.canChooseFiles = app
-        if app {
+        p.canChooseDirectories = what == .folder
+        p.canChooseFiles = what != .folder
+        if what == .app {
             p.allowedContentTypes = [.application]
             p.directoryURL = URL(fileURLWithPath: "/Applications")
         }
@@ -313,26 +561,41 @@ struct SlotBubble: View {
         switch slot.kind {
         case .auto: return "sparkles"
         case .empty: return "circle.dashed"
-        case .app: return "app"
+        case .app, .file: return slot.target.isEmpty ? (slot.kind == .app ? "app" : "doc") : slot.target
         case .web: return "globe"
         case .folder: return "folder"
         case .action: return "bolt"
         case .submenu: return "circle.grid.2x2"
+        case .shortcut: return "square.2.layers.3d"
+        case .snippet: return "text.quote"
+        case .keys: return "keyboard"
+        case .workflow: return "list.bullet.rectangle"
+        case .switcher: return "square.on.square"
+        case .shell: return "terminal"
+        case .applescript: return "applescript"
+        case .system: return SystemControl(rawValue: slot.target)?.icon ?? "gearshape"
+        case .delay: return "hourglass"
         }
     }
 
     var title: String {
         if !slot.title.isEmpty { return slot.title }
         switch slot.kind {
-        case .app, .folder: return slot.target.isEmpty ? kindTitle(slot.kind) : URL(fileURLWithPath: slot.target).deletingPathExtension().lastPathComponent
+        case .app, .folder, .file:
+            return slot.target.isEmpty ? kindTitle(slot.kind) : URL(fileURLWithPath: slot.target).deletingPathExtension().lastPathComponent
         case .web: return URL(string: slot.target)?.host ?? kindTitle(slot.kind)
+        case .shortcut: return slot.target.isEmpty ? kindTitle(slot.kind) : slot.target
+        case .snippet: return slot.target.isEmpty ? kindTitle(slot.kind) : String(slot.target.prefix(24))
+        case .keys: return KeyCombo(slot.target)?.display ?? kindTitle(slot.kind)
+        case .system: return SystemControl(rawValue: slot.target)?.title ?? kindTitle(slot.kind)
+        case .delay: return L("Wait %@ s", slot.target.isEmpty ? "…" : slot.target)
         default: return kindTitle(slot.kind)
         }
     }
 
     var body: some View {
         VStack(spacing: 3) {
-            Image(systemName: icon).font(.system(size: 18))
+            SlotIcon(name: icon)
             Text(title).font(.system(size: 10)).lineLimit(2).multilineTextAlignment(.center)
         }
         .frame(width: 76, height: 62)
@@ -577,7 +840,6 @@ struct GeneralTab: View {
             Toggle(L("Open at login"), isOn: Binding(get: { launchAtLogin }, set: { v in model.app.launchAtLogin = v; launchAtLogin = model.app.launchAtLogin }))
             LabeledContent(L("Version"), value: version)
             LabeledContent(L("License"), value: "MIT")
-            LabeledContent(L("Language"), value: L("Follows your macOS language (English, ไทย)"))
             Text(L("Shaken needs no special permissions. It watches the mouse with a standard monitor and only reads what you drag after you shake."))
                 .font(.caption).foregroundStyle(.secondary)
         }

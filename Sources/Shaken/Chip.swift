@@ -13,26 +13,25 @@ final class ChipController {
     enum State {
         case running(String)
         case done(JobResult)
-        case info(String)
         case failed(String)
     }
 
     weak var delegate: ChipDelegate?
     private let panel = FloatingPanel(size: NSSize(width: 300, height: 64))
-    private let view = ChipView(frame: NSRect(x: 0, y: 0, width: 300, height: 64))
-    private var autoClose: DispatchWorkItem?
+    let view = ChipView(frame: NSRect(x: 0, y: 0, width: 300, height: 64))
+    private let effect = NSVisualEffectView()
     private(set) var state: State?
 
     var isVisible: Bool { panel.isVisible }
     var frame: NSRect { panel.frame }
 
     init() {
-        let effect = NSVisualEffectView(frame: view.frame)
-        effect.material = .popover
+        effect.frame = view.frame
+        effect.material = .hudWindow     // same glass as the wheel and shelf tray
         effect.blendingMode = .behindWindow
         effect.state = .active
         effect.wantsLayer = true
-        effect.layer?.cornerRadius = 14
+        effect.layer?.cornerRadius = 16
         effect.layer?.masksToBounds = true
         view.autoresizingMask = [.width, .height]
         effect.addSubview(view)
@@ -41,17 +40,25 @@ final class ChipController {
         view.controller = self
     }
 
+    /// Renders `state` and returns the size the chip needs.
+    func layout(_ state: State) -> NSSize {
+        view.render(state)
+        let size = view.fittingSize
+        return NSSize(width: max(240, min(size.width, 380)), height: max(56, size.height))
+    }
+
+    func cornerRadius(for size: NSSize) -> CGFloat { 14 }
+
     /// Shows the chip with the thumbnail sitting under the pointer, so a press-and-drag picks it up.
     func show(_ state: State, at point: NSPoint? = nil) {
         self.state = state
-        autoClose?.cancel()
-        view.render(state)
-        let size = view.fittingSize
         var frame = panel.frame
-        frame.size = NSSize(width: max(220, min(size.width, 380)), height: max(56, size.height))
+        frame.size = layout(state)
+        effect.layer?.cornerRadius = cornerRadius(for: frame.size)
         if let p = point {
             frame.origin = NSPoint(x: p.x - 30, y: p.y - frame.height / 2)
         } else {
+            frame.origin.x = panel.frame.midX - frame.width / 2
             frame.origin.y += panel.frame.height - frame.height
         }
         if let screen = NSScreen.screens.first(where: { NSMouseInRect(point ?? frame.origin, $0.frame, false) }) {
@@ -59,18 +66,22 @@ final class ChipController {
             frame.origin.x = min(max(frame.origin.x, v.minX + 4), v.maxX - frame.width - 4)
             frame.origin.y = min(max(frame.origin.y, v.minY + 4), v.maxY - frame.height - 4)
         }
+        let wasVisible = panel.isVisible
         panel.setFrame(frame, display: true)
-        panel.orderFrontRegardless()
-
-        if case .info = state {
-            let w = DispatchWorkItem { [weak self] in self?.delegate?.chipClose() }
-            autoClose = w
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.4, execute: w)
+        effect.frame = NSRect(origin: .zero, size: frame.size)
+        panel.invalidateShadow()
+        if !wasVisible {
+            panel.alphaValue = 0
+            panel.orderFrontRegardless()
+            NSAnimationContext.runAnimationGroup { ctx in
+                ctx.duration = 0.12
+                panel.animator().alphaValue = 1
+            }
         }
+
     }
 
     func close() {
-        autoClose?.cancel()
         panel.orderOut(nil)
         state = nil
     }
@@ -91,50 +102,66 @@ final class ChipView: NSView, NSDraggingSource {
     private var outputs: [URL] = []
     private var mouseDownPoint: NSPoint?
 
+    private var thumbW: NSLayoutConstraint!
+    private var thumbH: NSLayoutConstraint!
+    private var row: NSStackView!
+
     override init(frame: NSRect) {
         super.init(frame: frame)
         thumb.imageScaling = .scaleProportionallyUpOrDown
         thumb.wantsLayer = true
-        thumb.layer?.cornerRadius = 6
+        thumb.layer?.cornerRadius = 7
+        thumb.layer?.masksToBounds = true
         title.font = .systemFont(ofSize: 12.5, weight: .semibold)
         title.lineBreakMode = .byTruncatingMiddle
         detail.font = .systemFont(ofSize: 11)
         detail.textColor = .secondaryLabelColor
-        detail.maximumNumberOfLines = 4
+        detail.maximumNumberOfLines = 3
         detail.lineBreakMode = .byWordWrapping
         detail.preferredMaxLayoutWidth = 230
+        detail.cell?.truncatesLastVisibleLine = true
         spinner.style = .spinning
         spinner.controlSize = .small
 
         for (b, symbol, tip, sel) in [(undo, "arrow.uturn.backward", L("Undo: move results to Trash"), #selector(undoTapped)),
                                       (closeButton, "xmark", L("Close (Esc)"), #selector(closeTapped))] {
-            b.image = NSImage(systemSymbolName: symbol, accessibilityDescription: tip)
+            b.image = NSImage(systemSymbolName: symbol, accessibilityDescription: tip)?
+                .withSymbolConfiguration(.init(pointSize: 10, weight: .bold))
+            b.imagePosition = .imageOnly
             b.bezelStyle = .regularSquare
             b.isBordered = false
+            b.contentTintColor = .secondaryLabelColor
+            b.wantsLayer = true
+            b.layer?.cornerRadius = 11
+            b.layer?.backgroundColor = NSColor.labelColor.withAlphaComponent(0.08).cgColor
             b.toolTip = tip
             b.target = self
             b.action = sel
             b.setAccessibilityLabel(tip)
+            b.translatesAutoresizingMaskIntoConstraints = false
+            b.widthAnchor.constraint(equalToConstant: 22).isActive = true
+            b.heightAnchor.constraint(equalToConstant: 22).isActive = true
         }
 
         let text = NSStackView(views: [title, detail])
         text.orientation = .vertical
         text.alignment = .leading
         text.spacing = 2
-        let row = NSStackView(views: [thumb, spinner, text, undo, closeButton])
+        row = NSStackView(views: [thumb, spinner, text, undo, closeButton])
         row.orientation = .horizontal
         row.alignment = .centerY
         row.spacing = 10
-        row.edgeInsets = NSEdgeInsets(top: 8, left: 10, bottom: 8, right: 10)
+        row.setCustomSpacing(6, after: undo)
         row.translatesAutoresizingMaskIntoConstraints = false
         addSubview(row)
+        thumbW = thumb.widthAnchor.constraint(equalToConstant: 40)
+        thumbH = thumb.heightAnchor.constraint(equalToConstant: 40)
         NSLayoutConstraint.activate([
             row.leadingAnchor.constraint(equalTo: leadingAnchor),
             row.trailingAnchor.constraint(equalTo: trailingAnchor),
             row.topAnchor.constraint(equalTo: topAnchor),
             row.bottomAnchor.constraint(equalTo: bottomAnchor),
-            thumb.widthAnchor.constraint(equalToConstant: 40),
-            thumb.heightAnchor.constraint(equalToConstant: 40),
+            thumbW, thumbH,
             text.widthAnchor.constraint(lessThanOrEqualToConstant: 240),
         ])
     }
@@ -142,6 +169,18 @@ final class ChipView: NSView, NSDraggingSource {
     required init?(coder: NSCoder) { fatalError() }
 
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+
+    /// Filled badge symbols: white glyph on a coloured shape.
+    private func symbol(_ name: String, size: CGFloat, color: NSColor) -> NSImage? {
+        NSImage(systemSymbolName: name, accessibilityDescription: nil)?
+            .withSymbolConfiguration(.init(pointSize: size, weight: .semibold).applying(.init(paletteColors: [.white, color])))
+    }
+
+    private func setThumb(_ side: CGFloat, scaling: NSImageScaling) {
+        thumbW.constant = side
+        thumbH.constant = side
+        thumb.imageScaling = scaling
+    }
 
     func render(_ state: ChipController.State) {
         outputs = []
@@ -151,11 +190,16 @@ final class ChipView: NSView, NSDraggingSource {
         undo.isHidden = true
         closeButton.isHidden = false
         title.textColor = .labelColor
+        title.font = .systemFont(ofSize: 12.5, weight: .semibold)
+        row.edgeInsets = NSEdgeInsets(top: 9, left: 9, bottom: 9, right: 10)
+        row.spacing = 10
+        setThumb(40, scaling: .scaleProportionallyUpOrDown)
         switch state {
         case .running(let name):
             thumb.isHidden = true
             spinner.isHidden = false
             spinner.startAnimation(nil)
+            row.edgeInsets = NSEdgeInsets(top: 10, left: 14, bottom: 10, right: 14)
             title.stringValue = name
             detail.stringValue = L("Working… Esc to cancel")
             closeButton.isHidden = true
@@ -176,16 +220,11 @@ final class ChipView: NSView, NSDraggingSource {
             detail.stringValue = d
             thumb.image = NSWorkspace.shared.icon(forFile: r.outputs.first?.path ?? "/")
             if let first = r.outputs.first { loadThumbnail(first) }
-        case .info(let message):
-            thumb.image = NSImage(systemSymbolName: "checkmark.circle.fill", accessibilityDescription: nil)?
-                .withSymbolConfiguration(.init(pointSize: 26, weight: .regular).applying(.init(paletteColors: [.systemGreen])))
-            title.stringValue = message
-            detail.stringValue = ""
         case .failed(let message):
-            thumb.image = NSImage(systemSymbolName: "exclamationmark.triangle.fill", accessibilityDescription: nil)?
-                .withSymbolConfiguration(.init(pointSize: 24, weight: .regular).applying(.init(paletteColors: [.systemRed])))
+            setThumb(30, scaling: .scaleNone)
+            thumb.image = symbol("exclamationmark.triangle.fill", size: 20, color: .systemOrange)
+            row.edgeInsets = NSEdgeInsets(top: 11, left: 12, bottom: 11, right: 10)
             title.stringValue = L("Didn't work")
-            title.textColor = .systemRed
             detail.stringValue = message
         }
         detail.isHidden = detail.stringValue.isEmpty
@@ -232,3 +271,4 @@ final class ChipView: NSView, NSDraggingSource {
 
     func ignoreModifierKeys(for session: NSDraggingSession) -> Bool { true }
 }
+

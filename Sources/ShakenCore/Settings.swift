@@ -10,6 +10,50 @@ public enum SlotKind: String, Codable, CaseIterable, Sendable {
     case folder
     case action
     case submenu
+    /// Opens one file.
+    case file
+    /// Runs an Apple Shortcut by name; dragged items become its input.
+    case shortcut
+    /// Pastes saved text into the front app (needs Accessibility).
+    case snippet
+    /// Presses a key combination in the front app, e.g. "cmd+shift+4" (needs Accessibility).
+    case keys
+    /// Runs its children one after another.
+    case workflow
+    /// A ring of the apps you used most recently; pick one to switch to it.
+    case switcher
+    /// Runs shell code with zsh. Dragged files are its arguments.
+    case shell
+    /// Runs AppleScript. Dragged files are passed to `on run argv`.
+    case applescript
+    /// Volume, brightness, media keys, sleep, lock… (see `SystemControl`).
+    case system
+    /// Workflow step only: waits this many seconds.
+    case delay
+
+    /// Kinds whose children open as a ring of their own.
+    public var opensRing: Bool { self == .submenu || self == .switcher }
+    /// Kinds that can't sit inside a submenu or workflow.
+    public var isContainer: Bool { self == .submenu || self == .workflow || self == .switcher }
+    /// Kinds that need a target to do anything.
+    public var needsTarget: Bool {
+        [.app, .web, .folder, .action, .file, .shortcut, .snippet, .keys, .shell, .applescript, .system, .delay].contains(self)
+    }
+    /// Kinds that run code or type into other apps: shown for review before a shared wheel is imported.
+    public var isSensitive: Bool { [.shell, .applescript, .keys, .snippet, .shortcut].contains(self) }
+    /// What a workflow can run.
+    public static let workflowSteps: [SlotKind] = [.app, .web, .folder, .file, .shortcut, .snippet, .keys, .shell, .applescript, .system, .delay]
+    /// What can sit directly on a wheel or in a submenu.
+    public static let wheelKinds: [SlotKind] = allCases.filter { $0 != .delay }
+}
+
+/// A wheel used instead of the main one when this app is in front and nothing is dragged.
+public struct AppWheel: Codable, Equatable, Sendable {
+    public var name: String
+    public var slots: [Slot]
+    public init(name: String, slots: [Slot] = (0..<ShakenSettings.slotCount).map { _ in Slot(kind: .empty) }) {
+        self.name = name; self.slots = slots
+    }
 }
 
 public struct Slot: Codable, Equatable, Identifiable, Sendable {
@@ -19,7 +63,8 @@ public struct Slot: Codable, Equatable, Identifiable, Sendable {
     public var title: String
     /// SF Symbol name.
     public var icon: String
-    /// app: path to .app · web: URL (may contain {query}) · folder: path · action: action id.
+    /// app: path to .app · web: URL (may contain {query}) · folder/file: path · action: action id
+    /// · shortcut: Shortcut name · snippet: the text · keys: e.g. "cmd+shift+4".
     public var target: String
     public var children: [Slot]
 
@@ -73,6 +118,7 @@ public struct ShakenSettings: Codable, Equatable, Sendable {
     public static let currentVersion = 1
     public static let slotCount = 6
     public static let maxChildren = 6
+    public static let maxWorkflowSteps = 12
 
     public var version: Int = currentVersion
     public var slots: [Slot]
@@ -85,6 +131,13 @@ public struct ShakenSettings: Codable, Equatable, Sendable {
     public var kindPreferences: [String: KindPreference] = [:]
     /// Pack action id → (relative path → SHA-256) the user approved (R9).
     public var approvals: [String: [String: String]] = [:]
+    /// Bundle id → wheel shown when that app is in front and nothing is dragged.
+    public var appWheels: [String: AppWheel] = [:]
+
+    /// The slots for a wheel opened without dragging while `bundleID` is in front.
+    public func clickSlots(frontApp bundleID: String?) -> [Slot] {
+        bundleID.flatMap { appWheels[$0]?.slots } ?? slots
+    }
 
     public init(slots: [Slot] = ShakenSettings.defaultSlots()) { self.slots = slots }
 
@@ -102,20 +155,51 @@ public struct ShakenSettings: Codable, Equatable, Sendable {
         func fix(_ slot: Slot, depth: Int) -> Slot {
             var x = slot
             if x.id.isEmpty || !seen.insert(x.id).inserted { x.id = UUID().uuidString; seen.insert(x.id) }
-            if depth > 0 && x.kind == .submenu { x.kind = .empty }   // one level of submenus only
+            if depth > 0 && x.kind.isContainer { x.kind = .empty }   // one level deep only
             if x.kind == .submenu {
                 x.children = Array(x.children.prefix(Self.maxChildren)).map { fix($0, depth: 1) }
+                x.children = x.children.map { var c = $0; if c.kind == .delay { c.kind = .empty }; return c }
+            } else if x.kind == .workflow {
+                x.children = Array(x.children.prefix(Self.maxWorkflowSteps)).map { fix($0, depth: 1) }
+                    .filter { SlotKind.workflowSteps.contains($0.kind) }
             } else {
                 x.children = []
             }
-            if [.app, .web, .folder, .action].contains(x.kind) && x.target.trimmingCharacters(in: .whitespaces).isEmpty {
+            if x.kind.needsTarget && x.target.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 x.kind = .empty
+            }
+            if x.kind == .keys && KeyCombo(x.target) == nil { x.kind = .empty }
+            if x.kind == .system && SystemControl(rawValue: x.target) == nil { x.kind = .empty }
+            if x.kind == .delay {
+                if depth == 0 { x.kind = .empty }
+                else if let d = Double(x.target) { x.target = String(min(max(d, 0.1), 30)) } else { x.kind = .empty }
             }
             return x
         }
-        var slots = Array(s.slots.prefix(Self.slotCount))
-        while slots.count < Self.slotCount { slots.append(Slot(kind: .empty)) }
-        s.slots = slots.map { fix($0, depth: 0) }
+        func fixWheel(_ list: [Slot]) -> [Slot] { Self.fixWheel(list) { fix($0, depth: $1) } }
+        s.slots = fixWheel(s.slots)
+        for (k, v) in s.appWheels {
+            if k.isEmpty { s.appWheels[k] = nil; continue }
+            s.appWheels[k] = AppWheel(name: v.name, slots: fixWheel(v.slots))
+        }
+        return s.finishValidation()
+    }
+
+    private static func fixWheel(_ list: [Slot], _ fix: (Slot, Int) -> Slot) -> [Slot] {
+        var slots = Array(list.prefix(slotCount))
+        while slots.count < slotCount { slots.append(Slot(kind: .empty)) }
+        return slots.map { fix($0, 0) }
+    }
+
+    /// Cleans a wheel from elsewhere (an imported preset) the same way saved settings are cleaned.
+    public static func validatedWheel(_ slots: [Slot]) -> [Slot] {
+        var s = ShakenSettings(slots: slots)
+        s = s.validated()
+        return s.slots
+    }
+
+    private func finishValidation() -> ShakenSettings {
+        var s = self
         s.gesture.sensitivity = min(max(s.gesture.sensitivity, 1), 5)
         s.shrinkTargetKB = min(max(s.shrinkTargetKB, 50), 100_000)
         s.excludedApps = Array(Set(s.excludedApps.filter { !$0.isEmpty })).sorted()
@@ -177,7 +261,7 @@ public final class SettingsStore {
 // Decoding tolerates missing keys so older files keep working.
 extension ShakenSettings {
     enum CodingKeys: String, CodingKey {
-        case version, slots, gesture, excludedApps, hotKey, shrinkTargetKB, kindPreferences, approvals
+        case version, slots, gesture, excludedApps, hotKey, shrinkTargetKB, kindPreferences, approvals, appWheels
     }
 
     public init(from d: Decoder) throws {
@@ -190,6 +274,7 @@ extension ShakenSettings {
         shrinkTargetKB = try c.decodeIfPresent(Int.self, forKey: .shrinkTargetKB) ?? 1024
         kindPreferences = try c.decodeIfPresent([String: KindPreference].self, forKey: .kindPreferences) ?? [:]
         approvals = try c.decodeIfPresent([String: [String: String]].self, forKey: .approvals) ?? [:]
+        appWheels = try c.decodeIfPresent([String: AppWheel].self, forKey: .appWheels) ?? [:]
     }
 }
 

@@ -66,3 +66,39 @@ final class EscapeKey {
         id = nil
     }
 }
+
+/// Keys that drive a wheel opened without dragging. Registered only while it's open,
+/// so the arrows and Return belong to other apps the rest of the time.
+final class WheelKeys {
+    enum Key {
+        case left, right, up, down, enter, back, nextWheel, previousWheel, slot(Int)
+        var isNext: Bool { if case .nextWheel = self { return true } else { return false } }
+    }
+
+    private var ids: [UInt32] = []
+    var handler: ((Key) -> Void)?
+
+    func activate() {
+        guard ids.isEmpty else { return }
+        let cmd = UInt32(cmdKey)
+        var table: [(Int, UInt32, Key)] = [
+            (kVK_LeftArrow, 0, .left), (kVK_RightArrow, 0, .right), (kVK_UpArrow, 0, .up), (kVK_DownArrow, 0, .down),
+            (kVK_Return, 0, .enter), (kVK_ANSI_KeypadEnter, 0, .enter), (kVK_Space, 0, .enter),
+            (kVK_Delete, 0, .back),
+            (kVK_RightArrow, cmd, .nextWheel), (kVK_LeftArrow, cmd, .previousWheel),
+            (kVK_Tab, 0, .nextWheel), (kVK_Tab, UInt32(shiftKey), .previousWheel),
+        ]
+        let digits = [kVK_ANSI_1, kVK_ANSI_2, kVK_ANSI_3, kVK_ANSI_4, kVK_ANSI_5, kVK_ANSI_6]
+        for (i, k) in digits.enumerated() { table.append((k, 0, .slot(i))) }
+        for (code, mods, key) in table {
+            if let id = HotKeyCenter.shared.register(keyCode: UInt32(code), modifiers: mods, handler: { [weak self] in self?.handler?(key) }) {
+                ids.append(id)
+            }
+        }
+    }
+
+    func deactivate() {
+        ids.forEach { HotKeyCenter.shared.unregister($0) }
+        ids = []
+    }
+}

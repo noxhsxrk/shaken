@@ -1,6 +1,5 @@
 # Rotates images 90° clockwise using macOS's built-in sips.
 name = "Rotate 90°"
-name_th = "หมุน 90°"
 icon = "rotate.right"
 accepts = ["public.image"]
 run = "./rotate.sh"

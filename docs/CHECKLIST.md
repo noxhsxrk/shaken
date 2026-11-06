@@ -17,3 +17,4 @@ Automated (✅ in `scripts/test.sh`) vs. by hand (☐).
 | Resources | < 1 % average CPU while not dragging | ☐ Activity Monitor, 5 min idle |
 | Errors | Damaged image, unwritable folder, name clash: clear message, originals intact, nothing partial left | ✅ `damagedImage…`, `unwritableFolder…`, `neverOverwrites` |
 | Install | Opens on a fresh macOS account without Gatekeeper warning, no Xcode | ☐ needs Developer ID + `NOTARY_PROFILE` |
+| Shelf | Drop on centre → on shelf; ⌃⌥Space shows tray; tile drags into Finder/Safari/Slack and leaves the shelf; clicking ZIP zips the shelf | ✅ `ShelfTests` · ☐ by hand |

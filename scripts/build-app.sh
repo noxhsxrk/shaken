@@ -28,15 +28,9 @@ cp -R Examples "$APP/Contents/Resources/Examples"
 [ -f Resources/AppIcon.icns ] && cp Resources/AppIcon.icns "$APP/Contents/Resources/" && \
   /usr/libexec/PlistBuddy -c "Add :CFBundleIconFile string AppIcon" "$APP/Contents/Info.plist"
 
-# String Catalog → <lang>.lproj/Localizable.strings
-if xcrun --find xcstringstool >/dev/null 2>&1; then
-  xcrun xcstringstool compile Resources/Localizable.xcstrings --output-directory "$APP/Contents/Resources" >/dev/null
-  # English is the source language (keys are English); an empty table makes it a real localization.
-  mkdir -p "$APP/Contents/Resources/en.lproj"
-  [ -f "$APP/Contents/Resources/en.lproj/Localizable.strings" ] || printf '' > "$APP/Contents/Resources/en.lproj/Localizable.strings"
-else
-  echo "warning: xcstringstool not found (needs Xcode); app will be English only" >&2
-fi
+# English only: keys in the source are the English text.
+mkdir -p "$APP/Contents/Resources/en.lproj"
+printf '' > "$APP/Contents/Resources/en.lproj/Localizable.strings"
 
 if [ -n "${SIGN_IDENTITY:-}" ]; then
   codesign --force --options runtime --timestamp --sign "$SIGN_IDENTITY" "$APP"

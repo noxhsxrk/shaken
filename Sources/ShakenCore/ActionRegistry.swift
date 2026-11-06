@@ -184,6 +184,12 @@ public enum ShakenPaths {
     public static var packs: URL { support.appendingPathComponent("Packs", isDirectory: true) }
     public static var traces: URL { support.appendingPathComponent("Traces", isDirectory: true) }
     public static var settings: URL { support.appendingPathComponent("settings.json") }
+    public static var shelf: URL { support.appendingPathComponent("shelf.json") }
+    /// Shelved promises and image data; unlike the inbox, kept across launches.
+    public static var shelfFiles: URL { support.appendingPathComponent("Shelf", isDirectory: true) }
+    public static var desktop: URL {
+        FileManager.default.urls(for: .desktopDirectory, in: .userDomainMask)[0]
+    }
     /// Received file promises and dropped image data live here; cleared at launch.
     public static var inbox: URL {
         FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
@@ -194,7 +200,7 @@ public enum ShakenPaths {
     }
 
     public static func ensure() {
-        for d in [support, actions, packs, inbox] {
+        for d in [support, actions, packs, inbox, shelfFiles] {
             try? FileManager.default.createDirectory(at: d, withIntermediateDirectories: true)
         }
     }

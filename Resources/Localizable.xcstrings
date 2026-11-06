@@ -111,6 +111,16 @@
         }
       }
     },
+    "All %@": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ทั้งหมด %@"
+          }
+        }
+      }
+    },
     "Allow": {
       "localizations": {
         "th": {
@@ -207,16 +217,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "อัตโนมัติ"
-          }
-        }
-      }
-    },
-    "Back": {
-      "localizations": {
-        "th": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "กลับ"
           }
         }
       }
@@ -327,6 +327,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "เลือก…"
+          }
+        }
+      }
+    },
+    "Clear": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ล้าง"
+          }
+        }
+      }
+    },
+    "Clear Shelf": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ล้างชั้นวาง"
           }
         }
       }
@@ -461,6 +481,16 @@
         }
       }
     },
+    "Desktop": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เดสก์ท็อป"
+          }
+        }
+      }
+    },
     "Didn't work": {
       "localizations": {
         "th": {
@@ -481,12 +511,42 @@
         }
       }
     },
+    "Downloads": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ดาวน์โหลด"
+          }
+        }
+      }
+    },
+    "Drag everything on the shelf": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ลากทุกอย่างบนชั้นวาง"
+          }
+        }
+      }
+    },
     "Drag one slot onto another to swap them. Positions stay fixed so your hand can learn them.": {
       "localizations": {
         "th": {
           "stringUnit": {
             "state": "translated",
             "value": "ลากช่องหนึ่งไปวางบนอีกช่องเพื่อสลับ ตำแหน่งคงที่เพื่อให้มือจำได้"
+          }
+        }
+      }
+    },
+    "Drag out · click a slot to run it on the shelf": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ลากออกได้ · คลิกช่องเพื่อสั่งกับของบนชั้นวาง"
           }
         }
       }
@@ -991,6 +1051,16 @@
         }
       }
     },
+    "On the shelf · %@": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เก็บลงชั้นวางแล้ว · %@"
+          }
+        }
+      }
+    },
     "Only files can be copied to a folder": {
       "localizations": {
         "th": {
@@ -1121,6 +1191,16 @@
         }
       }
     },
+    "Put on shelf": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เก็บลงชั้นวาง"
+          }
+        }
+      }
+    },
     "Quit Shaken": {
       "localizations": {
         "th": {
@@ -1157,6 +1237,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "ลบ"
+          }
+        }
+      }
+    },
+    "Remove from shelf": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เอาออกจากชั้นวาง"
           }
         }
       }
@@ -1337,6 +1427,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "สะบัด · แทร็กแพด"
+          }
+        }
+      }
+    },
+    "Shelf": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ชั้นวาง"
+          }
+        }
+      }
+    },
+    "Shelf · %@": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ชั้นวาง · %@"
           }
         }
       }

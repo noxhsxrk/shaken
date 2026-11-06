@@ -55,13 +55,15 @@ public struct ActionManifest: Equatable, Identifiable, Sendable {
     public var directory: URL?
     public var source: Source
 
+    /// True when all the command does is put text on the clipboard ("Copy text", "Copy link").
+    /// Pointless when what it would copy came from the clipboard in the first place.
+    public var onlyCopiesText: Bool {
+        steps.allSatisfy { if case .builtin("copy-text", _) = $0 { return true } else { return false } } && !steps.isEmpty
+    }
+
     public var displayName: String {
-        if source == .builtin { return L(name) }
-        for lang in Locale.preferredLanguages {
-            let code = String(lang.prefix(2))
-            if let n = localizedNames[code] { return n }
-        }
-        return name
+        // Shaken is English-only; name_xx keys in action.toml are read but not shown.
+        name
     }
 
     /// Parses an `action.toml`. `id` defaults to the folder name.

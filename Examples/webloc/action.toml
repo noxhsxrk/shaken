@@ -1,6 +1,5 @@
 # Saves a dragged link as a .webloc file you can double-click later.
 name = "Save link as .webloc"
-name_th = "บันทึกลิงก์เป็น .webloc"
 icon = "link.badge.plus"
 accepts = ["shaken.link"]
 max = 1

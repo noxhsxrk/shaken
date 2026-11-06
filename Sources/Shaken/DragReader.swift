@@ -38,11 +38,12 @@ enum DragReader {
     }
 
     /// After the drop: turns promises and raw image data into real files in the inbox.
-    static func materialize(_ pb: NSPasteboard, completion: @escaping (Result<JobInput, Error>) -> Void) {
+    /// - Parameter root: where promised files and image data are saved (the inbox, or the shelf folder).
+    static func materialize(_ pb: NSPasteboard, into root: URL = ShakenPaths.inbox, completion: @escaping (Result<JobInput, Error>) -> Void) {
         let files = fileURLs(pb)
         if !files.isEmpty { return completion(.success(.files(files))) }
 
-        let inboxDir = ShakenPaths.inbox.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let inboxDir = root.appendingPathComponent(UUID().uuidString, isDirectory: true)
 
         if let promises = pb.readObjects(forClasses: [NSFilePromiseReceiver.self]) as? [NSFilePromiseReceiver], !promises.isEmpty {
             do { try FileManager.default.createDirectory(at: inboxDir, withIntermediateDirectories: true) } catch { return completion(.failure(error)) }

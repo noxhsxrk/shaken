@@ -1,8 +1,6 @@
 import Foundation
 
-/// Looks up a user-facing string in the app's String Catalog (compiled into
-/// `Shaken.app/Contents/Resources/<lang>.lproj`). Keys are the English text,
-/// so an unbundled build (tests, `swift run`) simply shows English.
+/// A user-facing string. Shaken ships in English only; keys are the English text.
 public func L(_ key: String) -> String {
     NSLocalizedString(key, bundle: .main, comment: "")
 }
