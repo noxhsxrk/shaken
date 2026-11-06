@@ -6,6 +6,14 @@ import ShakenCore
 /// so the look can be checked without driving a real drag.
 enum Snapshot {
     @MainActor static func runIfRequested() {
+        if let dir = ProcessInfo.processInfo.environment["SHAKEN_DMG_BACKGROUND"] {
+            let out = URL(fileURLWithPath: dir)
+            try? FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
+            for (scale, name) in [(1, "background.png"), (2, "background@2x.png")] {
+                try? Logo.dmgBackground(scale: scale).representation(using: .png, properties: [:])?.write(to: out.appendingPathComponent(name))
+            }
+            exit(0)
+        }
         if let dir = ProcessInfo.processInfo.environment["SHAKEN_ICONSET"] {
             do { try Logo.writeIconset(to: URL(fileURLWithPath: dir)); exit(0) } catch { print(error); exit(1) }
         }
