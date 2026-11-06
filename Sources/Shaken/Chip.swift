@@ -1,5 +1,7 @@
 import AppKit
+import Quartz
 import QuickLookThumbnailing
+import UniformTypeIdentifiers
 import ShakenCore
 
 protocol ChipDelegate: AnyObject {
@@ -101,6 +103,8 @@ final class ChipView: NSView, NSDraggingSource {
     private let spinner = NSProgressIndicator()
     private let undo = NSButton()
     private let closeButton = NSButton()
+    private let look = NSButton()
+    private let playBadge = NSImageView()
     private var outputs: [URL] = []
     private var mouseDownPoint: NSPoint?
 
@@ -125,7 +129,8 @@ final class ChipView: NSView, NSDraggingSource {
         spinner.style = .spinning
         spinner.controlSize = .small
 
-        for (b, symbol, tip, sel) in [(undo, "arrow.uturn.backward", L("Undo: move results to Trash"), #selector(undoTapped)),
+        for (b, symbol, tip, sel) in [(look, "eye", L("Quick Look (double-click the picture)"), #selector(lookTapped)),
+                                      (undo, "arrow.uturn.backward", L("Undo: move results to Trash"), #selector(undoTapped)),
                                       (closeButton, "xmark", L("Close (Esc)"), #selector(closeTapped))] {
             b.image = (symbol == "xmark" ? Brand.glyph("Close").map { g -> NSImage in
                 let i = g.copy() as! NSImage; i.size = NSSize(width: 12, height: 12); i.isTemplate = true; return i } : nil)
@@ -150,7 +155,13 @@ final class ChipView: NSView, NSDraggingSource {
         text.orientation = .vertical
         text.alignment = .leading
         text.spacing = 2
-        row = NSStackView(views: [thumb, spinner, text, undo, closeButton])
+        row = NSStackView(views: [thumb, spinner, text, look, undo, closeButton])
+        // A play mark on video and audio results.
+        playBadge.image = NSImage(systemSymbolName: "play.circle.fill", accessibilityDescription: nil)?
+            .withSymbolConfiguration(.init(pointSize: 16, weight: .regular).applying(.init(paletteColors: [.white, NSColor.black.withAlphaComponent(0.55)])))
+        playBadge.isHidden = true
+        playBadge.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(playBadge)
         row.orientation = .horizontal
         row.alignment = .centerY
         row.spacing = 10
@@ -191,6 +202,8 @@ final class ChipView: NSView, NSDraggingSource {
         spinner.isHidden = true
         thumb.isHidden = false
         undo.isHidden = true
+        look.isHidden = true
+        playBadge.isHidden = true
         closeButton.isHidden = false
         title.textColor = .labelColor
         title.font = .systemFont(ofSize: 12.5, weight: .semibold)
@@ -209,6 +222,10 @@ final class ChipView: NSView, NSDraggingSource {
         case .done(let r):
             outputs = r.outputs
             undo.isHidden = r.outputs.isEmpty
+            look.isHidden = r.outputs.isEmpty
+            playBadge.isHidden = !r.outputs.contains { u in
+                UTType(filenameExtension: u.pathExtension).map { $0.conforms(to: .audiovisualContent) } ?? false
+            }
             if r.outputs.count == 1 {
                 title.stringValue = r.outputs[0].lastPathComponent
             } else if r.outputs.count > 1 {
@@ -245,11 +262,21 @@ final class ChipView: NSView, NSDraggingSource {
     }
 
     @objc private func undoTapped() { controller?.undoTapped() }
+    @objc private func lookTapped() { QuickLook.shared.show(outputs) }
     @objc private func closeTapped() { controller?.closeTapped() }
 
     // MARK: drag out
 
-    override func mouseDown(with event: NSEvent) { mouseDownPoint = event.locationInWindow }
+    override func mouseDown(with event: NSEvent) {
+        mouseDownPoint = event.locationInWindow
+        if event.clickCount == 2, !outputs.isEmpty { QuickLook.shared.show(outputs) }
+    }
+
+    override func layout() {
+        super.layout()
+        // Bottom-right corner of the thumbnail.
+        playBadge.frame = NSRect(x: thumb.frame.maxX - 14, y: thumb.frame.minY - 2, width: 18, height: 18)
+    }
 
     override func mouseDragged(with event: NSEvent) {
         guard !outputs.isEmpty, let start = mouseDownPoint else { return }
@@ -285,3 +312,23 @@ final class ChipView: NSView, NSDraggingSource {
     func ignoreModifierKeys(for session: NSDraggingSession) -> Bool { true }
 }
 
+
+/// Shows files in the system Quick Look panel: pictures, PDFs, and playable video and audio.
+final class QuickLook: NSObject, QLPreviewPanelDataSource, QLPreviewPanelDelegate {
+    static let shared = QuickLook()
+    private var items: [URL] = []
+
+    func show(_ urls: [URL]) {
+        items = urls
+        guard let panel = QLPreviewPanel.shared() else { return }
+        NSApp.activate(ignoringOtherApps: true)
+        panel.dataSource = self
+        panel.delegate = self
+        panel.currentPreviewItemIndex = 0
+        panel.reloadData()
+        panel.makeKeyAndOrderFront(nil)
+    }
+
+    func numberOfPreviewItems(in panel: QLPreviewPanel!) -> Int { items.count }
+    func previewPanel(_ panel: QLPreviewPanel!, previewItemAt index: Int) -> QLPreviewItem! { items[index] as NSURL }
+}
