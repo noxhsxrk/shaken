@@ -38,6 +38,12 @@ Drop on a slot and Shaken runs it: it converts the file, opens it in an app, cop
 runs a Shortcut or a script. The result appears as a small chip that you can drag straight into
 the next app.
 
+<p align="center">
+  <img src="docs/images/demo.gif" width="640" alt="A HEIC photo is dragged out of a Photos window. The mouse shakes, the Shaken wheel opens under the pointer, and the photo is dropped on Convert to JPG. A chip with IMG_0412.jpg appears and is dragged into an upload form that only takes JPG.">
+  <br>
+  <sub>Drag a HEIC photo, shake, drop on <em>Convert to JPG</em>, then drag the JPG straight into the form.</sub>
+</p>
+
 Without dragging anything, the same wheel works as a launcher. Press a key and you get your apps,
 snippets, keyboard shortcuts, system controls and workflows, all one flick away.
 
