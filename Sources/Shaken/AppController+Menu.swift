@@ -104,11 +104,13 @@ extension AppController {
         }
     }
 
+    /// Help › Check for Updates and Settings › Check Now: if there's a newer version, install it
+    /// straight away and relaunch. Progress shows in the chip.
     @objc func checkForUpdates() {
         Task { @MainActor in
             do {
                 if let r = try await UpdateCheck.latest(newerThan: currentVersion) {
-                    offerUpdate(r)
+                    installUpdate(r)
                 } else {
                     let a = NSAlert()
                     a.messageText = L("Shaken is up to date")
@@ -125,14 +127,62 @@ extension AppController {
 
     var currentVersion: String { Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0" }
 
+    /// The daily background check asks first, since it wasn't the user's idea.
     func offerUpdate(_ r: UpdateCheck.Release) {
         let a = NSAlert()
         a.messageText = L("Shaken %@ is available", r.version)
-        a.informativeText = L("You have %@. Download the new version from GitHub and replace the app in Applications.", currentVersion)
-        a.addButton(withTitle: L("Download"))
+        a.informativeText = L("You have %@. Shaken can install it now and reopen itself.", currentVersion)
+        a.addButton(withTitle: L("Install and Relaunch"))
         a.addButton(withTitle: L("Later"))
+        a.addButton(withTitle: L("What's New"))
         NSApp.activate(ignoringOtherApps: true)
-        if a.runModal() == .alertFirstButtonReturn { NSWorkspace.shared.open(r.page) }
+        switch a.runModal() {
+        case .alertFirstButtonReturn: installUpdate(r)
+        case .alertThirdButtonReturn: NSWorkspace.shared.open(r.page)
+        default: break
+        }
+    }
+
+    /// Downloads, verifies and swaps in the new version, then relaunches. If that can't be done
+    /// (no DMG on the release, the app isn't in a writable folder), opens the release page instead.
+    func installUpdate(_ r: UpdateCheck.Release) {
+        guard let dmg = r.dmg, let id = Bundle.main.bundleIdentifier, Bundle.main.bundleURL.pathExtension == "app" else {
+            NSWorkspace.shared.open(r.page)
+            return
+        }
+        let anchor = NSPoint(x: NSScreen.main.map { $0.visibleFrame.maxX - 200 } ?? 800,
+                             y: NSScreen.main.map { $0.visibleFrame.maxY - 60 } ?? 600)
+        chip.show(.running(L("Updating to %@", r.version)), at: anchor)
+        updateEscape()
+        Log.info("installing update \(r.version)")
+        let bundle = Bundle.main.bundleURL
+        Task { @MainActor in
+            do {
+                let app = try await Updater.install(dmg: dmg, expectedSHA256: r.sha256, replacing: bundle, bundleID: id)
+                Log.info("update installed, relaunching")
+                Self.relaunch(app)
+            } catch {
+                self.fail(error)
+                let a = NSAlert()
+                a.messageText = L("The update couldn't be installed")
+                a.informativeText = ((error as? LocalizedError)?.errorDescription ?? error.localizedDescription)
+                    + "\n\n" + L("You can download it from GitHub instead.")
+                a.addButton(withTitle: L("Open Download Page"))
+                a.addButton(withTitle: L("Cancel"))
+                NSApp.activate(ignoringOtherApps: true)
+                if a.runModal() == .alertFirstButtonReturn { NSWorkspace.shared.open(r.page) }
+            }
+        }
+    }
+
+    /// Starts the new copy once this one has quit.
+    static func relaunch(_ app: URL) {
+        let p = Process()
+        p.executableURL = URL(fileURLWithPath: "/bin/sh")
+        p.arguments = ["-c", "while kill -0 \"$1\" 2>/dev/null; do sleep 0.2; done; /usr/bin/open \"$2\"", "relaunch",
+                       String(ProcessInfo.processInfo.processIdentifier), app.path]
+        try? p.run()
+        NSApp.terminate(nil)
     }
 
     @objc func copyDiagnostics() {

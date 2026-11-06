@@ -9,6 +9,14 @@ public enum UpdateCheck {
         public var version: String
         public var page: URL
         public var notes: String
+        /// The .dmg attached to the release, if any.
+        public var dmg: URL?
+        /// The "SHA-256: `…`" line from the release notes, used to verify the download.
+        public var sha256: String?
+
+        public init(version: String, page: URL, notes: String, dmg: URL? = nil, sha256: String? = nil) {
+            self.version = version; self.page = page; self.notes = notes; self.dmg = dmg; self.sha256 = sha256
+        }
     }
 
     /// "v0.10.1" > "0.9" — numeric, part by part; a missing part counts as 0.
@@ -30,7 +38,20 @@ public enum UpdateCheck {
               let tag = obj["tag_name"] as? String,
               (obj["draft"] as? Bool) != true, (obj["prerelease"] as? Bool) != true else { return nil }
         let page = (obj["html_url"] as? String).flatMap(URL.init(string:)) ?? releasesPage
-        return Release(version: tag.trimmingCharacters(in: CharacterSet(charactersIn: "vV")), page: page, notes: obj["body"] as? String ?? "")
+        let notes = obj["body"] as? String ?? ""
+        let assets = obj["assets"] as? [[String: Any]] ?? []
+        let dmg = assets.first { ($0["name"] as? String)?.lowercased().hasSuffix(".dmg") == true }
+            .flatMap { $0["browser_download_url"] as? String }.flatMap(URL.init(string:))
+        return Release(version: tag.trimmingCharacters(in: CharacterSet(charactersIn: "vV")), page: page, notes: notes,
+                       dmg: dmg, sha256: sha256(in: notes))
+    }
+
+    /// Finds a 64-hex-digit SHA-256 on a line that mentions SHA-256.
+    static func sha256(in notes: String) -> String? {
+        for line in notes.split(whereSeparator: \.isNewline) where line.uppercased().contains("SHA-256") || line.uppercased().contains("SHA256") {
+            if let r = line.range(of: "[0-9a-fA-F]{64}", options: .regularExpression) { return String(line[r]).lowercased() }
+        }
+        return nil
     }
 
     /// The latest release if it's newer than `current`, nil if up to date. Throws on network errors.
