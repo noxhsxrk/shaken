@@ -2,7 +2,7 @@
 
 All notable changes to Shaken. Versions follow [Semantic Versioning](https://semver.org).
 
-## 0.4.0 - 2026-11-06
+## 0.3.2 - 2026-11-06
 
 ### Added
 - **Pick commands on the wheel.** *Settings → Commands* now shows the wheel itself: click a slot, then the command it shows. Picking one that's on another slot swaps the two, and nothing else moves.
