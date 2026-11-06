@@ -84,6 +84,7 @@ enum Snapshot {
                 }
             }
         }
+        if ProcessInfo.processInfo.environment["SHAKEN_SNAPSHOT_MOTION"] != nil { motionFrames(out.appendingPathComponent("motion", isDirectory: true), images: images, actions: actions) }
         let ctl = AppController()
         for i in 0..<4 {
             let r = ImageRenderer(content: WelcomeView(app: ctl, close: {}, page: i).environment(\.colorScheme, .dark)
@@ -127,6 +128,88 @@ enum Snapshot {
             let rep = plain.bitmapImageRepForCachingDisplay(in: plain.bounds)!
             plain.cacheDisplay(in: plain.bounds, to: rep)
             rep.draw(in: b, from: .zero, operation: .sourceOver, fraction: 1, respectFlipped: true, hints: nil)
+        }
+    }
+
+    /// Frames of the wheel turning between three wheels, for the README animation.
+    @MainActor private static func motionFrames(_ dir: URL, images: [ResolvedSlot], actions: [ActionManifest]) {
+        try? FileManager.default.removeItem(at: dir)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let d = WheelController.diameter
+        let win = NSWindow(contentRect: NSRect(x: 0, y: 0, width: d, height: d), styleMask: .borderless, backing: .buffered, defer: false)
+        win.appearance = NSAppearance(named: .darkAqua)
+        let v = WheelView(frame: NSRect(x: 0, y: 0, width: d, height: d))
+        win.contentView = v
+
+        func wheel(_ slots: [Slot]) -> [ResolvedSlot] {
+            var st = ShakenSettings(); st.slots = slots
+            return ActionResolver.layout(payload: DragPayload([]), actions: actions, settings: st.validated())
+        }
+        let launcher = wheel([Slot(kind: .app, target: "/System/Applications/Calendar.app"), Slot(kind: .system, target: "mute"),
+                              Slot(kind: .switcher), Slot(kind: .shell, title: "Backup", target: "true"),
+                              Slot(kind: .keys, target: "cmd+shift+4"), Slot(kind: .snippet, target: "Thanks!")])
+        let media = wheel([Slot(kind: .system, target: "play-pause"), Slot(kind: .system, target: "next-track"),
+                           Slot(kind: .system, target: "volume-up"), Slot(kind: .system, target: "mute"),
+                           Slot(kind: .system, target: "volume-down"), Slot(kind: .system, target: "previous-track")])
+        let pages: [(slots: [ResolvedSlot], summary: String, name: String, hot: Int)] = [
+            (images, "2 images", "Main", 1), (launcher, "Shaken", "Work", 2), (media, "Shaken", "Media", 0),
+        ]
+        var rings: [CGImage] = [], centres: [CGImage] = []
+        for (i, p) in pages.enumerated() {
+            v.configure(slots: p.slots, summary: p.summary, mode: .click, shelfCount: 0)
+            v.page = WheelPageInfo(name: p.name, index: i, count: pages.count)
+            v.hovered = p.hot
+            if let r = v.snapshotRing(), let c = v.snapshotCentre() { rings.append(r); centres.append(c) }
+        }
+        guard rings.count == pages.count else { return }
+
+        let px = Int(d * 2)
+        let cs = CGColorSpace(name: CGColorSpace.sRGB)!
+        var n = 0
+        func frame(_ layers: [(img: CGImage, angle: CGFloat, scale: CGFloat, alpha: CGFloat)]) {
+            guard let ctx = CGContext(data: nil, width: px, height: px, bitsPerComponent: 8, bytesPerRow: 0, space: cs,
+                                      bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return }
+            ctx.setFillColor(Brand.night.cgColor)
+            ctx.fill(CGRect(x: 0, y: 0, width: px, height: px))
+            // A soft glow behind the wheel.
+            let glow = CGGradient(colorsSpace: cs, colors: [Brand.accent.withAlphaComponent(0.42).cgColor, Brand.night.withAlphaComponent(0).cgColor] as CFArray, locations: [0, 1])!
+            ctx.drawRadialGradient(glow, startCenter: CGPoint(x: px / 2, y: px / 2), startRadius: 0, endCenter: CGPoint(x: px / 2, y: px / 2), endRadius: CGFloat(px) * 0.62, options: [])
+            for l in layers where l.alpha > 0.001 {
+                ctx.saveGState()
+                ctx.setAlpha(l.alpha)
+                ctx.translateBy(x: CGFloat(px) / 2, y: CGFloat(px) / 2)
+                ctx.rotate(by: l.angle * .pi / 180)
+                ctx.scaleBy(x: l.scale * 0.84, y: l.scale * 0.84)   // leave room for the glow
+                ctx.draw(l.img, in: CGRect(x: -CGFloat(px) / 2, y: -CGFloat(px) / 2, width: CGFloat(px), height: CGFloat(px)))
+                ctx.restoreGState()
+            }
+            if let img = ctx.makeImage(),
+               let data = NSBitmapImageRep(cgImage: img).representation(using: .png, properties: [:]) {
+                try? data.write(to: dir.appendingPathComponent(String(format: "f%04d.png", n)))
+                n += 1
+            }
+        }
+        func easeOut(_ t: CGFloat) -> CGFloat { 1 - pow(1 - min(max(t, 0), 1), 3) }
+        func easeInOut(_ t: CGFloat) -> CGFloat { let t = min(max(t, 0), 1); return t < 0.5 ? 4 * t * t * t : 1 - pow(-2 * t + 2, 3) / 2 }
+
+        let fps: CGFloat = 30, hold = 30, follow = 9, turn = 13
+        for i in 0..<pages.count {
+            let a = i, b = (i + 1) % pages.count
+            for _ in 0..<hold { frame([(rings[a], 0, 1, 1), (centres[a], 0, 1, 1)]) }
+            // Fingers start to push the ring.
+            for k in 0..<follow {
+                let ang = 18 * easeInOut(CGFloat(k + 1) / CGFloat(follow))
+                frame([(rings[a], ang, 1, 1 - ang / 38 * 0.35), (centres[a], 0, 1, 1)])
+            }
+            // Past the switch point: old turns away, new turns in, centre crossfades.
+            for k in 0..<turn {
+                let t = CGFloat(k + 1) / fps
+                let outP = easeOut(t / 0.26), inP = easeOut((t - 0.04) / 0.38)
+                let oldAngle = 18 + (62 - 18) * outP
+                frame([(rings[a], oldAngle, 1 - 0.06 * outP, (1 - 18.0 / 38 * 0.35) * (1 - outP)),
+                       (rings[b], -62 * (1 - inP), 0.94 + 0.06 * inP, inP),
+                       (centres[a], 0, 1, 1 - easeOut(t / 0.2)), (centres[b], 0, 1, easeOut(t / 0.2))])
+            }
         }
     }
 

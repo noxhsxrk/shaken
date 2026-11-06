@@ -42,7 +42,9 @@ Without dragging anything, the same wheel works as a launcher. Press a key and y
 snippets, keyboard shortcuts, system controls and workflows, all one flick away.
 
 <p align="center">
-  <img src="docs/images/wheel-drag.png" width="340" alt="The wheel opened over a dragged photo, with Shrink below size limit highlighted">
+  <img src="docs/images/wheel-turn.gif" width="440" alt="The Shaken wheel turning like a dial between three wheels: Main with image commands, Work with apps and shortcuts, and Media controls. The centre stays still while the ring of slots turns.">
+  <br>
+  <sub>Swipe with two fingers and the ring turns like a dial to your next wheel.</sub>
 </p>
 
 - **Drag onward.** Results land in a chip under the pointer. Drag it into Finder, Safari, Chrome,
@@ -135,7 +137,12 @@ then act on everything on the shelf, for example to zip all of it at once.
    **Running apps**: a ring of the apps you used most recently. Arrow to one and press Return to switch.
 
 The bottom of the centre shows which wheel you're on: its name, and one dot per wheel with the
-current one highlighted.
+current one highlighted. The centre stays still while the ring of slots turns, and if you let go
+of a swipe early the ring springs back.
+
+<p align="center">
+  <img src="docs/images/wheel-drag.png" width="320" alt="The wheel opened over two dragged images, with Shrink below size limit highlighted">
+</p>
 
 ### Scene 5: one slice, five steps
 

@@ -382,6 +382,21 @@ final class WheelView: NSView {
         return rep.cgImage
     }
 
+    /// For the snapshot renderer: the ring and the centre as separate images.
+    func snapshotRing() -> CGImage? { ringImage() }
+    func snapshotCentre() -> CGImage? {
+        let scale = window?.backingScaleFactor ?? 2
+        guard let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: Int(bounds.width * scale), pixelsHigh: Int(bounds.height * scale),
+                                         bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
+                                         colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0) else { return nil }
+        rep.size = bounds.size
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: rep)
+        effectiveAppearance.performAsCurrentDrawingAppearance { drawCentre() }
+        NSGraphicsContext.restoreGraphicsState()
+        return rep.cgImage
+    }
+
     private func ringLayer() -> CALayer? {
         guard let host = layer, let img = ringImage() else { return nil }
         let l = CALayer()
