@@ -228,17 +228,19 @@ public final class JobRunner {
         for o in result.outputs { try trash(o) }
     }
 
-    /// Renames files in place to "<base> 01.ext", "<base> 02.ext"… in the order given.
+    /// Renames files in place. `base` is a pattern such as "{date} {name}" or "Trip {n:3}"; plain text
+    /// becomes "<text> 01", "<text> 02"… in the order given.
     /// Never overwrites: a taken name gets the next free one. Undo renames them back.
     public func rename(_ files: [URL], base rawBase: String) throws -> JobResult {
         let base = rawBase.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: "/", with: "-")
         guard !base.isEmpty else { throw ShakenError.other(L("Enter a name")) }
         guard !files.isEmpty else { throw ShakenError.unsupportedInput(L("Text")) }
-        let width = max(2, String(files.count).count)
         let fm = FileManager.default
         var outputs: [URL] = []
         var from: [String: URL] = [:]
         var prints: [String: String] = [:]
+        // Dates for {date} are read before anything moves.
+        let dates = files.map(RenamePattern.date(of:))
         // Phase 1: move every file to a temporary name, so names held by files in this batch are free.
         var parked: [(original: URL, temp: URL)] = []
         do {
@@ -252,16 +254,28 @@ public final class JobRunner {
             for p in parked.reversed() { try? fm.moveItem(at: p.temp, to: p.original) }
             throw error
         }
-        // Phase 2: give each one the next free number. Files outside the batch are never touched.
-        var n = 0
-        for p in parked {
+        // Phase 2: build each new name from the pattern. A name that's taken (by a file outside the
+        // batch, or because the pattern gives two files the same name) gets " 2", " 3"… added.
+        let pattern = base.contains("{") ? base : base + " {n}"
+        let counts = pattern.lowercased().contains("{n")
+        var skip = 0   // counter numbers already taken by files outside the batch
+        for (i, p) in parked.enumerated() {
             let dir = p.original.deletingLastPathComponent()
             let ext = p.original.pathExtension
-            var target: URL
-            repeat {
-                n += 1
-                target = dir.appendingPathComponent(base + " " + String(format: "%0\(width)d", n) + (ext.isEmpty ? "" : "." + ext))
-            } while fm.fileExists(atPath: target.path)
+            func name(_ stem: String) -> URL { dir.appendingPathComponent(stem + (ext.isEmpty ? "" : "." + ext)) }
+            var stem = RenamePattern.apply(pattern, file: p.original, index: i + skip, total: parked.count, date: dates[i])
+            var target = name(stem)
+            // With a counter, a taken name moves on to the next number; otherwise add " 2", " 3"…
+            while counts && fm.fileExists(atPath: target.path) && skip < 10_000 {
+                skip += 1
+                stem = RenamePattern.apply(pattern, file: p.original, index: i + skip, total: parked.count, date: dates[i])
+                target = name(stem)
+            }
+            var k = 2
+            while fm.fileExists(atPath: target.path) {
+                target = name("\(stem) \(k)")
+                k += 1
+            }
             do { try fm.moveItem(at: p.temp, to: target) } catch {
                 try? fm.moveItem(at: p.temp, to: p.original)
                 throw error

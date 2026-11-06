@@ -54,7 +54,7 @@ struct TOMLTests {
 struct ManifestTests {
     @Test func builtinsParseWithTheSameModel() {
         let all = ActionRegistry.builtins()
-        #expect(all.count == 21)
+        #expect(all.count == 33)
         #expect(Set(all.map(\.id)).count == all.count)
         #expect(all.allSatisfy { $0.source == .builtin && !$0.steps.isEmpty })
     }

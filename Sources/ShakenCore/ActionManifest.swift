@@ -8,10 +8,10 @@ public enum Step: Equatable, Sendable {
     /// Built-in steps that create files. Everything else in `effectSteps` acts on files.
     public static let producingSteps: Set<String> = [
         "convert", "resize", "shrink", "strip-metadata", "to-pdf", "split-pdf", "merge-pdf", "zip", "qr", "save-text",
-        "compress-pdf",
+        "compress-pdf", "ocr", "remove-background", "rotate", "compress-video", "extract-audio", "download",
     ]
     /// Steps with a side effect only (open, copy...). They may only appear at the end.
-    public static let effectSteps: Set<String> = ["open-with", "copy-names", "copy-text", "open-url", "reveal", "rename"]
+    public static let effectSteps: Set<String> = ["open-with", "copy-names", "copy-text", "open-url", "reveal", "rename", "copy-path", "copy-checksum", "copy-contents"]
 
     public static func parse(_ raw: String) throws -> Step {
         let t = raw.trimmingCharacters(in: .whitespaces)

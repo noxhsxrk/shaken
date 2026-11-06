@@ -45,6 +45,18 @@ enum BuiltinSteps {
                 try forEachFile(input, name) { try resize($0, maxPixel: px, ctx) }
             }
         case "compress-pdf": try forEachFile(input, name) { try compressPDF($0, ctx) }
+        case "ocr": try forEachFile(input, name) { try MoreSteps.ocr($0, ctx) }
+        case "remove-background": try forEachFile(input, name) { try MoreSteps.removeBackground($0, ctx) }
+        case "rotate":
+            guard let deg = arg.flatMap(Int.init) else { throw ShakenError.invalidManifest(L("rotate takes 90, -90 or 180")) }
+            try forEachFile(input, name) { try MoreSteps.rotate($0, degrees: deg, ctx) }
+        case "compress-video":
+            guard case .files(let f) = input else { throw ShakenError.unsupportedInput(name) }
+            for u in f { try Task.checkCancellation(); try await MoreSteps.compressVideo(u, ctx) }
+        case "extract-audio":
+            guard case .files(let f) = input else { throw ShakenError.unsupportedInput(name) }
+            for u in f { try Task.checkCancellation(); try await MoreSteps.extractAudio(u, ctx) }
+        case "download": try await MoreSteps.download(input, ctx)
         case "shrink":
             let target = arg.flatMap(Int.init).map { $0 * 1024 } ?? ctx.shrinkTargetBytes
             try forEachFile(input, name) { try shrink($0, targetBytes: target, ctx) }
@@ -86,6 +98,18 @@ enum BuiltinSteps {
             guard case .link(let u) = input else { throw ShakenError.unsupportedInput(L("Not a link")) }
             NSWorkspace.shared.open(u)
             return nil
+        case "copy-contents":
+            // The text of text files (e.g. what "ocr" just wrote), joined.
+            let texts = input.files.compactMap { try? String(contentsOf: $0, encoding: .utf8) }
+            guard !texts.isEmpty else { throw ShakenError.unsupportedInput(name) }
+            copy(texts.joined(separator: "\n\n"))
+            return L("Copied")
+        case "copy-path":
+            copy(input.files.map(\.path).joined(separator: "\n"))
+            return L("Copied")
+        case "copy-checksum":
+            copy(try MoreSteps.checksums(input.files))
+            return L("Copied")
         case "reveal":
             NSWorkspace.shared.activateFileViewerSelecting(input.files)
             return nil

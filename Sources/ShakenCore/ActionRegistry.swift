@@ -145,6 +145,80 @@ enum BuiltinActions {
         min = 2
         steps = ["rename"]
         """),
+        ("builtin.ocr", """
+        name = "Extract text"
+        icon = "text.viewfinder"
+        accepts = ["public.image", "com.adobe.pdf"]
+        steps = ["ocr"]
+        """),
+        ("builtin.copy-ocr", """
+        name = "Copy text from image"
+        icon = "doc.text.viewfinder"
+        accepts = ["public.image"]
+        max = 1
+        steps = ["ocr", "copy-contents"]
+        """),
+        ("builtin.remove-background", """
+        name = "Remove background"
+        icon = "person.and.background.dotted"
+        accepts = ["public.image"]
+        steps = ["remove-background"]
+        """),
+        ("builtin.rotate-right", """
+        name = "Rotate right"
+        icon = "rotate.right"
+        accepts = ["public.image"]
+        steps = ["rotate:90"]
+        """),
+        ("builtin.rotate-left", """
+        name = "Rotate left"
+        icon = "rotate.left"
+        accepts = ["public.image"]
+        steps = ["rotate:-90"]
+        """),
+        ("builtin.to-png", """
+        name = "Convert to PNG"
+        icon = "glyph:Convert"
+        accepts = ["public.image"]
+        steps = ["convert:png"]
+        """),
+        ("builtin.to-heic", """
+        name = "Convert to HEIC"
+        icon = "glyph:Convert"
+        accepts = ["public.image"]
+        steps = ["convert:heic"]
+        """),
+        ("builtin.compress-video", """
+        name = "Compress video"
+        icon = "glyph:Compress"
+        accepts = ["public.movie"]
+        steps = ["compress-video"]
+        """),
+        ("builtin.extract-audio", """
+        name = "Extract audio"
+        icon = "waveform"
+        accepts = ["public.movie"]
+        steps = ["extract-audio"]
+        """),
+        ("builtin.download", """
+        name = "Download file"
+        icon = "glyph:Downloads"
+        accepts = ["shaken.link"]
+        max = 1
+        steps = ["download"]
+        """),
+        ("builtin.copy-path", """
+        name = "Copy path"
+        icon = "glyph:CopyName"
+        accepts = ["public.item"]
+        steps = ["copy-path"]
+        """),
+        ("builtin.checksum", """
+        name = "Copy checksum"
+        icon = "number"
+        accepts = ["public.item"]
+        steps = ["copy-checksum"]
+        """),
     ]
 }
 
