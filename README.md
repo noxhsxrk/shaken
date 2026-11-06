@@ -213,7 +213,7 @@ and selecting text never trigger it.
 | 1 – 6 | Pick that slot at once. Each slot shows its number (1 is the top, then clockwise) |
 | Delete | Leave a submenu |
 | ⌘← ⌘→ (or Tab, ⇧Tab) | Switch between the main wheel, your other wheels, app wheels and *Running apps* |
-| Two-finger swipe sideways | The same, on a trackpad or Magic Mouse, with the pointer over the wheel |
+| Two-finger swipe sideways | The same, on a trackpad or Magic Mouse. The wheel follows your fingers and slides to the next one; let go early and it springs back |
 | Esc | Close |
 
 These keys belong to Shaken only while the wheel is open.
@@ -428,8 +428,10 @@ Global keys use Carbon `RegisterEventHotKey`, which needs no permission.
 
 ## Updates and help
 
-- **Updates.** Shaken checks GitHub for a new release once a day and offers to download it.
-  Turn this off in *Settings → General*, or check by hand with *Help › Check for Updates*.
+- **Updates.** *Help › Check for Updates* (or *Check Now* in Settings) installs a newer version
+  straight away: it downloads the release's DMG, checks it against the SHA-256 in the release
+  notes, replaces the app (the old copy goes to the Trash) and reopens Shaken. The daily
+  background check asks first. Turn it off in *Settings → General*.
 - **Something wrong?** *Help › Report a Problem* copies your version, setup and recent errors
   (no file names or contents) and opens a new issue. *Help › Copy Diagnostics* copies the same
   text without opening anything.
