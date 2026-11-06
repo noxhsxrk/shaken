@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/noxhsxrk/shaken/releases"><img src="https://img.shields.io/badge/macOS-13%2B-1f2328?logo=apple&logoColor=white" alt="macOS 13+"></a>
+  <a href="https://shaken.noxhsxrk.com/download"><img src="https://img.shields.io/badge/macOS-13%2B-1f2328?logo=apple&logoColor=white" alt="macOS 13+"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-7D89ED" alt="MIT license"></a>
   <img src="https://img.shields.io/badge/Swift-6-F05138?logo=swift&logoColor=white" alt="Swift 6">
   <img src="https://img.shields.io/badge/price-free-2ea44f" alt="Free">
@@ -18,7 +18,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/noxhsxrk/shaken/releases"><strong>Download</strong></a> ·
+  <a href="https://shaken.noxhsxrk.com/download"><strong>Download</strong></a> ·
   <a href="#a-short-walkthrough"><strong>Walkthrough</strong></a> ·
   <a href="#what-a-slot-can-do"><strong>Slot types</strong></a> ·
   <a href="#writing-a-command"><strong>Write a command</strong></a> ·
@@ -159,7 +159,7 @@ When something fails, the chip says what went wrong in plain words and stays unt
 
 ## Install
 
-Download the latest DMG from [Releases](https://github.com/noxhsxrk/shaken/releases), drag Shaken to Applications and open it. The Shaken icon appears in
+Download the latest DMG from [shaken.noxhsxrk.com/download](https://shaken.noxhsxrk.com/download), drag Shaken to Applications and open it. The Shaken icon appears in
 the menu bar. There is no Dock icon. Opening Shaken again shows Settings.
 
 The current builds aren't notarized by Apple yet, so the first time macOS says it can't check
@@ -429,8 +429,8 @@ Global keys use Carbon `RegisterEventHotKey`, which needs no permission.
 ## Updates and help
 
 - **Updates.** *Help › Check for Updates* (or *Check Now* in Settings) installs a newer version
-  straight away: it downloads the release's DMG, checks it against the SHA-256 in the release
-  notes, replaces the app (the old copy goes to the Trash) and reopens Shaken. The daily
+  straight away: it reads the list of releases from shaken.noxhsxrk.com, downloads the DMG, checks
+  it against the release's SHA-256, replaces the app (the old copy goes to the Trash) and reopens Shaken. The daily
   background check asks first. Turn it off in *Settings → General*.
 - **Something wrong?** *Help › Report a Problem* copies your version, setup and recent errors
   (no file names or contents) and opens a new issue. *Help › Copy Diagnostics* copies the same
@@ -461,7 +461,7 @@ Gesture detector -> Drag reader -> Action resolver -> Wheel overlay -> Job runne
 | Slot actions | `ShakenCore/Shortcuts.swift`, `InlineScript.swift`, `KeyCombo.swift`, `SystemControl.swift`, `Shaken/Typing.swift` | Shortcuts through `/usr/bin/shortcuts`, scripts through zsh and `osascript`, keys through `CGEvent`. |
 | Settings | `ShakenCore/Settings.swift`, `WheelPreset.swift` | Versioned `Codable` JSON with stable slot ids, validated on load, save and import. |
 | Look | `Shaken/Brand.swift`, `Shaken/Wheel.swift`, `Resources/` | Glass surfaces, palette, glyphs, app icon and menu bar icon. Respects Reduce Transparency and Increase Contrast. |
-| Gallery and updates | `ShakenCore/Gallery.swift`, `UpdateCheck.swift`, `gallery/` | Both read public files from this repository. |
+| Gallery and updates | `ShakenCore/Gallery.swift`, `UpdateCheck.swift`, `Updater.swift`, `gallery/` | The gallery reads this repository; updates read shaken.noxhsxrk.com/releases.json and install in place. |
 | Packs | `ShakenCore/PackManager.swift` | Clone, fingerprint, approve, update, remove. |
 
 ---

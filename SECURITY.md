@@ -9,7 +9,8 @@ can. Shaken tries hard to make sure you only run what you've seen:
   stored when you approve. Any change, or a new file, asks again.
 - Importing a shared wheel lists every script, Shortcut, snippet and key press in it first.
 - Shaken has no network access of its own, except `git` for packs, downloading a wheel from a
-  link you paste, and a daily check of the latest GitHub release (which you can turn off).
+  link you paste, and a daily check of shaken.noxhsxrk.com/releases.json for a new version (which you can turn off).
+- Updates are only installed after the downloaded DMG matches the SHA-256 published with the release, and the app inside has Shaken's bundle identifier. The old copy goes to the Trash.
 
 ## Reporting a vulnerability
 
