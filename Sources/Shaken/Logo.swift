@@ -1,9 +1,9 @@
 import AppKit
 
-/// The Shaken mark: six wheel slices with one lit, a centre dot, and two shake strokes.
-/// Shared by the app icon, the menu bar icon and docs/images/logo.svg.
+/// A wheel drawing used as decoration (installer background) and as a fallback menu bar icon.
+/// The app icon and menu bar icon themselves come from the asset kit (Resources/).
 enum Logo {
-    static let accent = NSColor(srgbRed: 0xF2 / 255, green: 0x61 / 255, blue: 0x3F / 255, alpha: 1)
+    static var accent: NSColor { Brand.accent }
 
     /// Draws the mark into `rect` (square). `template` draws a single-colour silhouette for the menu bar.
     static func drawMark(in rect: NSRect, tile: NSColor, hot: NSColor, core: NSColor, shake: NSColor?) {
@@ -50,52 +50,6 @@ enum Logo {
         return img
     }
 
-    /// One app icon image, `px` pixels square, in the macOS icon grid (824 of 1024 is the body).
-    static func appIcon(px: Int) -> NSBitmapImageRep {
-        let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: px, pixelsHigh: px, bitsPerSample: 8, samplesPerPixel: 4,
-                                   hasAlpha: true, isPlanar: false, colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0)!
-        rep.size = NSSize(width: 1024, height: 1024)
-        NSGraphicsContext.saveGraphicsState()
-        NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: rep)
-        let body = NSRect(x: 100, y: 100, width: 824, height: 824)
-        let shape = NSBezierPath(roundedRect: body, xRadius: 185, yRadius: 185)
-
-        // Soft drop shadow like the system icons.
-        NSGraphicsContext.saveGraphicsState()
-        let shadow = NSShadow()
-        shadow.shadowColor = NSColor.black.withAlphaComponent(0.35)
-        shadow.shadowOffset = NSSize(width: 0, height: -12)
-        shadow.shadowBlurRadius = 28
-        shadow.set()
-        NSColor(white: 0.1, alpha: 1).setFill()
-        shape.fill()
-        NSGraphicsContext.restoreGraphicsState()
-
-        NSGradient(starting: NSColor(srgbRed: 0.20, green: 0.22, blue: 0.26, alpha: 1),
-                   ending: NSColor(srgbRed: 0.08, green: 0.09, blue: 0.11, alpha: 1))?.draw(in: shape, angle: -90)
-        // A faint top highlight on the edge.
-        NSColor.white.withAlphaComponent(0.08).setStroke()
-        let rim = NSBezierPath(roundedRect: body.insetBy(dx: 2, dy: 2), xRadius: 183, yRadius: 183)
-        rim.lineWidth = 4
-        rim.stroke()
-
-        drawMark(in: body.insetBy(dx: 70, dy: 70), tile: NSColor(srgbRed: 0.90, green: 0.93, blue: 0.95, alpha: 0.92),
-                 hot: accent, core: accent, shake: NSColor.white.withAlphaComponent(0.45))
-        NSGraphicsContext.restoreGraphicsState()
-        return rep
-    }
-
-    /// Writes an .iconset folder for `iconutil -c icns`.
-    static func writeIconset(to dir: URL) throws {
-        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        for base in [16, 32, 128, 256, 512] {
-            for scale in [1, 2] {
-                let name = scale == 1 ? "icon_\(base)x\(base).png" : "icon_\(base)x\(base)@2x.png"
-                try appIcon(px: base * scale).representation(using: .png, properties: [:])!.write(to: dir.appendingPathComponent(name))
-            }
-        }
-    }
-
     /// The installer window's background: 660×400 points, the app on the left, Applications on the right.
     static func dmgBackground(scale: Int) -> NSBitmapImageRep {
         let size = NSSize(width: 660, height: 400)
@@ -107,19 +61,19 @@ enum Logo {
         NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: rep)
         let r = NSRect(origin: .zero, size: size)
         // Light, so Finder's icon labels (black in light mode) stay readable.
-        NSGradient(starting: NSColor(srgbRed: 0.98, green: 0.98, blue: 0.99, alpha: 1),
-                   ending: NSColor(srgbRed: 0.90, green: 0.91, blue: 0.93, alpha: 1))?.draw(in: r, angle: -90)
+        NSGradient(starting: Brand.lightSurface,
+                   ending: NSColor(srgbRed: 0.88, green: 0.90, blue: 0.97, alpha: 1))?.draw(in: r, angle: -90)
 
         // A faint wheel behind everything, cropped by the window.
-        drawMark(in: NSRect(x: 380, y: -120, width: 460, height: 460), tile: NSColor.black.withAlphaComponent(0.035),
-                 hot: accent.withAlphaComponent(0.12), core: NSColor.black.withAlphaComponent(0.03), shake: nil)
+        drawMark(in: NSRect(x: 380, y: -120, width: 460, height: 460), tile: Brand.lightText.withAlphaComponent(0.04),
+                 hot: accent.withAlphaComponent(0.16), core: Brand.lightText.withAlphaComponent(0.03), shake: nil)
 
         // Title.
         let title = NSAttributedString(string: "Shaken", attributes: [
-            .font: NSFont.systemFont(ofSize: 26, weight: .bold), .foregroundColor: NSColor(white: 0.1, alpha: 1)])
+            .font: NSFont.systemFont(ofSize: 26, weight: .bold), .foregroundColor: Brand.lightText])
         title.draw(at: NSPoint(x: (size.width - title.size().width) / 2, y: 330))
         let sub = NSAttributedString(string: "Shake mid-drag, pick a command, drag the result onward.", attributes: [
-            .font: NSFont.systemFont(ofSize: 13, weight: .regular), .foregroundColor: NSColor(white: 0.1, alpha: 0.55)])
+            .font: NSFont.systemFont(ofSize: 13, weight: .regular), .foregroundColor: Brand.lightText.withAlphaComponent(0.6)])
         sub.draw(at: NSPoint(x: (size.width - sub.size().width) / 2, y: 306))
 
         // Arrow from the app (x 170) to Applications (x 490); icons sit at y 180 from the top = 220 here.
@@ -140,10 +94,10 @@ enum Logo {
         head.fill()
 
         let hint = NSAttributedString(string: "Drag Shaken into Applications", attributes: [
-            .font: NSFont.systemFont(ofSize: 13, weight: .semibold), .foregroundColor: NSColor(white: 0.1, alpha: 0.85)])
+            .font: NSFont.systemFont(ofSize: 13, weight: .semibold), .foregroundColor: Brand.lightText.withAlphaComponent(0.85)])
         hint.draw(at: NSPoint(x: (size.width - hint.size().width) / 2, y: 70))
-        let note = NSAttributedString(string: "Then open it from Applications. A wheel icon appears in the menu bar.", attributes: [
-            .font: NSFont.systemFont(ofSize: 11), .foregroundColor: NSColor(white: 0.1, alpha: 0.45)])
+        let note = NSAttributedString(string: "Then open it from Applications. The Shaken icon appears in the menu bar.", attributes: [
+            .font: NSFont.systemFont(ofSize: 11), .foregroundColor: Brand.lightText.withAlphaComponent(0.5)])
         note.draw(at: NSPoint(x: (size.width - note.size().width) / 2, y: 48))
         NSGraphicsContext.restoreGraphicsState()
         return rep

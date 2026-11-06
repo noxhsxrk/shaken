@@ -53,7 +53,7 @@ struct WelcomeView: View {
             HStack {
                 HStack(spacing: 6) {
                     ForEach(0..<pages, id: \.self) { i in
-                        Circle().fill(i == page ? Color.accentColor : Color.secondary.opacity(0.3)).frame(width: 7, height: 7)
+                        Circle().fill(i == page ? Brand.accentColor : Color.secondary.opacity(0.3)).frame(width: 7, height: 7)
                     }
                 }
                 .accessibilityElement()
@@ -71,6 +71,7 @@ struct WelcomeView: View {
             .background(.bar)
         }
         .frame(width: 560, height: 470)
+        .tint(Brand.accentColor)
         .onReceive(timer) { _ in trusted = AXIsProcessTrusted() }
         .onAppear {
             launchAtLogin = app.launchAtLogin
@@ -100,7 +101,7 @@ struct WelcomeView: View {
 
     private var keysPage: some View {
         VStack(spacing: 16) {
-            Image(systemName: "keyboard").font(.system(size: 46)).foregroundStyle(Color.accentColor)
+            SlotIcon(name: "glyph:Keyboard", size: 38).foregroundStyle(Brand.accentColor)
             Text(L("No drag? Press a key")).font(.system(size: 26, weight: .bold))
             Text(L("Press %@ anywhere to open the wheel as a launcher: apps, snippets, shortcuts, system controls.", app.store.settings.hotKey.display))
                 .multilineTextAlignment(.center).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
@@ -118,7 +119,7 @@ struct WelcomeView: View {
     private var permissionPage: some View {
         VStack(spacing: 16) {
             Image(systemName: trusted ? "checkmark.shield.fill" : "hand.raised.fill")
-                .font(.system(size: 46)).foregroundStyle(trusted ? Color.green : Color.accentColor)
+                .font(.system(size: 46)).foregroundStyle(trusted ? Color.green : Brand.accentColor)
             Text(L("Permissions")).font(.system(size: 26, weight: .bold))
             Text(L("Shaking, the wheel, commands, apps, Shortcuts and scripts need no permission at all."))
                 .multilineTextAlignment(.center).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
@@ -159,7 +160,7 @@ struct WelcomeView: View {
     private func step(_ n: String, _ text: String) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 10) {
             Text(n).font(.system(size: 12, weight: .bold)).foregroundStyle(.white)
-                .frame(width: 20, height: 20).background(Circle().fill(Color.accentColor))
+                .frame(width: 20, height: 20).background(Circle().fill(Brand.accentColor))
             Text(text).fixedSize(horizontal: false, vertical: true)
         }
     }
@@ -184,7 +185,8 @@ struct WelcomeView: View {
         let url = dir.appendingPathComponent("Try Shaken.png")
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         if !FileManager.default.fileExists(atPath: url.path),
-           let png = Logo.appIcon(px: 512).representation(using: .png, properties: [:]) {
+           let tiff = NSApp.applicationIconImage.tiffRepresentation,
+           let png = NSBitmapImageRep(data: tiff)?.representation(using: .png, properties: [:]) {
             try? png.write(to: url)
         }
         NSWorkspace.shared.activateFileViewerSelecting([url])

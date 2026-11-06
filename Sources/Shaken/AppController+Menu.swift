@@ -8,7 +8,8 @@ extension AppController {
 
     func setUpStatusItem() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-        statusItem.button?.image = Logo.menuBarImage()
+        statusItem.button?.image = Brand.menuBarImage()
+        statusItem.button?.toolTip = "Shaken"
         let menu = NSMenu()
         menu.delegate = self
         statusItem.menu = menu

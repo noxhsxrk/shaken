@@ -7,21 +7,21 @@ enum BuiltinActions {
     static let manifests: [(id: String, toml: String)] = [
         ("builtin.to-jpg", """
         name = "Convert to JPG"
-        icon = "photo"
+        icon = "glyph:Convert"
         accepts = ["public.heic", "public.heif", "public.png"]
         max = 1
         steps = ["convert:jpg"]
         """),
         ("builtin.shrink", """
         name = "Shrink below size limit"
-        icon = "arrow.down.right.and.arrow.up.left"
+        icon = "glyph:Compress"
         accepts = ["public.heic", "public.heif", "public.png", "public.jpeg"]
         max = 1
         steps = ["shrink"]
         """),
         ("builtin.strip-metadata", """
         name = "Remove metadata"
-        icon = "eye.slash"
+        icon = "glyph:Metadata"
         accepts = ["public.image"]
         max = 1
         steps = ["strip-metadata"]
@@ -42,14 +42,14 @@ enum BuiltinActions {
         """),
         ("builtin.open-preview", """
         name = "Open in Preview"
-        icon = "eye"
+        icon = "glyph:Preview"
         accepts = ["public.image", "com.adobe.pdf"]
         max = 1
         steps = ["open-with:com.apple.Preview"]
         """),
         ("builtin.zip", """
         name = "Compress to ZIP"
-        icon = "archivebox"
+        icon = "glyph:Compress"
         accepts = ["public.item"]
         single_accepts = ["public.folder"]
         steps = ["zip"]
@@ -63,20 +63,20 @@ enum BuiltinActions {
         """),
         ("builtin.copy-names", """
         name = "Copy name"
-        icon = "character.cursor.ibeam"
+        icon = "glyph:CopyName"
         accepts = ["public.item"]
         steps = ["copy-names"]
         """),
         ("builtin.open-link", """
         name = "Open link"
-        icon = "safari"
+        icon = "glyph:Link"
         accepts = ["shaken.link"]
         max = 1
         steps = ["open-url"]
         """),
         ("builtin.copy-link", """
         name = "Copy link"
-        icon = "link"
+        icon = "glyph:Link"
         accepts = ["shaken.link"]
         steps = ["copy-text"]
         """),
@@ -120,13 +120,13 @@ enum BuiltinActions {
         """),
         ("builtin.to-avif", """
         name = "Convert to AVIF"
-        icon = "photo.badge.arrow.down"
+        icon = "glyph:Convert"
         accepts = ["public.image"]
         steps = ["convert:avif"]
         """),
         ("builtin.to-webp", """
         name = "Convert to WebP"
-        icon = "globe.badge.chevron.backward"
+        icon = "glyph:Convert"
         accepts = ["public.image"]
         requires = ["cwebp"]
         install = "brew install webp"
@@ -134,7 +134,7 @@ enum BuiltinActions {
         """),
         ("builtin.compress-pdf", """
         name = "Compress PDF"
-        icon = "doc.zipper"
+        icon = "glyph:Compress"
         accepts = ["com.adobe.pdf"]
         steps = ["compress-pdf"]
         """),

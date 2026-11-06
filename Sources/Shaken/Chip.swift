@@ -22,6 +22,7 @@ final class ChipController {
     private let panel = FloatingPanel(size: NSSize(width: 300, height: 64))
     let view = ChipView(frame: NSRect(x: 0, y: 0, width: 300, height: 64))
     private let effect = NSVisualEffectView()
+    private let surface = BrandSurfaceView()
     private(set) var state: State?
 
     var isVisible: Bool { panel.isVisible }
@@ -35,6 +36,9 @@ final class ChipController {
         effect.wantsLayer = true
         effect.layer?.cornerRadius = 16
         effect.layer?.masksToBounds = true
+        surface.frame = effect.bounds
+        surface.autoresizingMask = [.width, .height]
+        effect.addSubview(surface)
         view.autoresizingMask = [.width, .height]
         effect.addSubview(view)
         effect.autoresizingMask = [.width, .height]
@@ -57,6 +61,7 @@ final class ChipController {
         var frame = panel.frame
         frame.size = layout(state)
         effect.layer?.cornerRadius = cornerRadius(for: frame.size)
+        surface.cornerRadius = cornerRadius(for: frame.size)
         if let p = point {
             frame.origin = NSPoint(x: p.x - 30, y: p.y - frame.height / 2)
         } else {
@@ -122,8 +127,9 @@ final class ChipView: NSView, NSDraggingSource {
 
         for (b, symbol, tip, sel) in [(undo, "arrow.uturn.backward", L("Undo: move results to Trash"), #selector(undoTapped)),
                                       (closeButton, "xmark", L("Close (Esc)"), #selector(closeTapped))] {
-            b.image = NSImage(systemSymbolName: symbol, accessibilityDescription: tip)?
-                .withSymbolConfiguration(.init(pointSize: 10, weight: .bold))
+            b.image = (symbol == "xmark" ? Brand.glyph("Close").map { g -> NSImage in
+                let i = g.copy() as! NSImage; i.size = NSSize(width: 12, height: 12); i.isTemplate = true; return i } : nil)
+                ?? NSImage(systemSymbolName: symbol, accessibilityDescription: tip)?.withSymbolConfiguration(.init(pointSize: 10, weight: .bold))
             b.imagePosition = .imageOnly
             b.bezelStyle = .regularSquare
             b.isBordered = false

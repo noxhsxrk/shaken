@@ -111,6 +111,7 @@ struct SettingsView: View {
         }
         .padding()
         .frame(minWidth: 720, minHeight: 500)
+        .tint(Brand.accentColor)
     }
 }
 
@@ -469,7 +470,7 @@ struct ChildrenEditor: View {
             ForEach(Array(children.enumerated()), id: \.element.id) { j, child in
                 VStack(spacing: 0) {
                     if dropBefore == child.id {
-                        RoundedRectangle(cornerRadius: 2).fill(Color.accentColor).frame(height: 3).padding(.bottom, 4)
+                        RoundedRectangle(cornerRadius: 2).fill(Brand.accentColor).frame(height: 3).padding(.bottom, 4)
                     }
                     card(j, child)
                     if isWorkflow && j < children.count - 1 {
@@ -487,7 +488,7 @@ struct ChildrenEditor: View {
                 // Drop here to move an item to the end.
                 Color.clear.frame(height: 14)
                     .overlay(alignment: .top) {
-                        if dropBefore == "end" { RoundedRectangle(cornerRadius: 2).fill(Color.accentColor).frame(height: 3) }
+                        if dropBefore == "end" { RoundedRectangle(cornerRadius: 2).fill(Brand.accentColor).frame(height: 3) }
                     }
                     .onDrop(of: [.plainText], isTargeted: Binding(get: { dropBefore == "end" }, set: { dropBefore = $0 ? "end" : nil })) { _ in
                         if let d = dragging { move(d, before: nil) }
@@ -507,10 +508,10 @@ struct ChildrenEditor: View {
                     .help(L("Drag to reorder"))
                 if isWorkflow {
                     Text("\(j + 1)").font(.system(size: 11, weight: .bold)).foregroundStyle(.white)
-                        .frame(width: 20, height: 20).background(Circle().fill(Color.accentColor))
+                        .frame(width: 20, height: 20).background(Circle().fill(Brand.accentColor))
                 }
                 SlotIcon(name: bubble.icon, size: 14).frame(width: 24)
-                    .foregroundStyle(Color.accentColor)
+                    .foregroundStyle(Brand.accentColor)
                 VStack(alignment: .leading, spacing: 1) {
                     Text(bubble.title).lineLimit(1)
                     Text(kindTitle(child.kind)).font(.caption).foregroundStyle(.secondary)
@@ -543,7 +544,7 @@ struct ChildrenEditor: View {
             }
         }
         .background(RoundedRectangle(cornerRadius: 10).fill(Color.primary.opacity(dragging == child.id ? 0.03 : 0.06)))
-        .overlay(RoundedRectangle(cornerRadius: 10).stroke(expanded ? Color.accentColor.opacity(0.6) : Color.primary.opacity(0.08)))
+        .overlay(RoundedRectangle(cornerRadius: 10).stroke(expanded ? Brand.accentColor.opacity(0.6) : Color.primary.opacity(0.08)))
         .opacity(dragging == child.id ? 0.5 : 1)
     }
 }
@@ -575,7 +576,9 @@ struct SlotIcon: View {
     let name: String
     var size: CGFloat = 18
     var body: some View {
-        if name.hasPrefix("/") {
+        if name.hasPrefix(Brand.glyphPrefix), let g = Brand.glyph(String(name.dropFirst(Brand.glyphPrefix.count))) {
+            Image(nsImage: g).renderingMode(.template).resizable().scaledToFit().frame(width: size * 1.25, height: size * 1.25)
+        } else if name.hasPrefix("/") {
             Image(nsImage: NSWorkspace.shared.icon(forFile: name)).resizable().frame(width: size * 1.5, height: size * 1.5)
         } else {
             Image(systemName: name).font(.system(size: size))
@@ -746,7 +749,7 @@ struct WheelPreview: View {
             ForEach(Array(slots.enumerated()), id: \.element.id) { i, s in
                 let isSel = selected == s.id
                 let tile = WheelTileShape(index: i)
-                    .fill(isSel ? Color.accentColor : Color.primary.opacity(dropTarget == s.id ? 0.16 : 0.07))
+                    .fill(isSel ? Brand.accentColor : Color.primary.opacity(dropTarget == s.id ? 0.16 : 0.07))
                     .overlay(WheelTileShape(index: i).stroke(Color.primary.opacity(0.12), lineWidth: 1))
                 if !interactive { tile } else {
                 tile
@@ -797,12 +800,12 @@ struct SlotBubble: View {
         case .submenu: return "circle.grid.2x2"
         case .shortcut: return "square.2.layers.3d"
         case .snippet: return "text.quote"
-        case .keys: return "keyboard"
+        case .keys: return "glyph:Keyboard"
         case .workflow: return "list.bullet.rectangle"
-        case .switcher: return "square.on.square"
+        case .switcher: return "glyph:SwitchApp"
         case .shell: return "terminal"
         case .applescript: return "applescript"
-        case .system: return SystemControl(rawValue: slot.target)?.icon ?? "gearshape"
+        case .system: return slot.target == SystemControl.mute.rawValue ? "glyph:Mute" : (SystemControl(rawValue: slot.target)?.icon ?? "gearshape")
         case .delay: return "hourglass"
         }
     }
@@ -825,7 +828,7 @@ struct SlotBubble: View {
     var body: some View {
         VStack(spacing: 3) {
             SlotIcon(name: icon)
-                .foregroundStyle(isSelected ? Color.white : (slot.kind == .empty ? Color.secondary : Color.accentColor))
+                .foregroundStyle(isSelected ? Color.white : (slot.kind == .empty ? Color.secondary : Brand.accentColor))
             Text(title).font(.system(size: 10, weight: .medium)).lineLimit(2).multilineTextAlignment(.center)
                 .foregroundStyle(isSelected ? Color.white : (slot.kind == .empty ? Color.secondary : Color.primary))
         }
@@ -886,8 +889,8 @@ struct GalleryTab: View {
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 300), spacing: 10)], spacing: 10) {
                 ForEach(entries) { e in
                     HStack(alignment: .top, spacing: 12) {
-                        Image(systemName: e.icon ?? "circle.circle").font(.system(size: 20)).foregroundStyle(Color.accentColor)
-                            .frame(width: 36, height: 36).background(RoundedRectangle(cornerRadius: 9).fill(Color.accentColor.opacity(0.12)))
+                        Image(systemName: e.icon ?? "circle.circle").font(.system(size: 20)).foregroundStyle(Brand.accentColor)
+                            .frame(width: 36, height: 36).background(RoundedRectangle(cornerRadius: 9).fill(Brand.accentColor.opacity(0.12)))
                         VStack(alignment: .leading, spacing: 3) {
                             Text(e.name).font(.body.weight(.semibold))
                             Text(e.description).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
@@ -935,7 +938,7 @@ struct HotKeyRecorder: View {
                 Button(action: toggle) {
                     Text(recording ? L("Press keys…") : (value.isSet ? value.display : placeholder))
                         .font(.system(.body, design: .rounded).weight(value.isSet && !recording ? .semibold : .regular))
-                        .foregroundStyle(recording ? Color.accentColor : (value.isSet ? Color.primary : Color.secondary))
+                        .foregroundStyle(recording ? Brand.accentColor : (value.isSet ? Color.primary : Color.secondary))
                         .frame(minWidth: 110)
                 }
                 .accessibilityLabel(L("Keyboard shortcut"))

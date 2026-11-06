@@ -14,9 +14,6 @@ enum Snapshot {
             }
             exit(0)
         }
-        if let dir = ProcessInfo.processInfo.environment["SHAKEN_ICONSET"] {
-            do { try Logo.writeIconset(to: URL(fileURLWithPath: dir)); exit(0) } catch { print(error); exit(1) }
-        }
         guard let dir = ProcessInfo.processInfo.environment["SHAKEN_SNAPSHOT"] else { return }
         let out = URL(fileURLWithPath: dir, isDirectory: true)
         try? FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
@@ -87,7 +84,7 @@ enum Snapshot {
         // Vibrant labels don't draw into a cache, so host the content in a plain view.
         let plain = NSView(frame: NSRect(origin: .zero, size: size))
         plain.appearance = ap
-        let stack = t.effect.subviews[0]
+        let stack = t.effect.subviews.last!   // the content; the brand surface sits underneath
         stack.removeFromSuperview()
         plain.addSubview(stack)
         NSLayoutConstraint.activate([
@@ -99,8 +96,8 @@ enum Snapshot {
         plain.layoutSubtreeIfNeeded()
         render(size: size, ap, url, background: { b in
             let dark = ap.name == .darkAqua
-            (dark ? NSColor(white: 0.32, alpha: 1) : NSColor(white: 0.85, alpha: 1)).setFill(); b.fill()
-            (dark ? NSColor(white: 0.14, alpha: 0.92) : NSColor(white: 0.97, alpha: 0.92)).setFill()
+            (dark ? Brand.night : NSColor(srgbRed: 0.86, green: 0.88, blue: 0.94, alpha: 1)).setFill(); b.fill()
+            Brand.surface(dark: dark).setFill()
             NSBezierPath(roundedRect: b, xRadius: 16, yRadius: 16).fill()
         }) { b in
             let rep = plain.bitmapImageRepForCachingDisplay(in: plain.bounds)!
@@ -121,7 +118,7 @@ enum Snapshot {
         shown.layoutSubtreeIfNeeded()
         render(size: size, ap, url, background: { b in
             let dark = ap.name == .darkAqua
-            (dark ? NSColor(white: 0.14, alpha: 1) : NSColor(white: 0.97, alpha: 1)).setFill()
+            Brand.surface(dark: dark).setFill()
             NSBezierPath(roundedRect: b, xRadius: c.cornerRadius(for: size), yRadius: c.cornerRadius(for: size)).fill()
         }) { b in
             let rep = shown.bitmapImageRepForCachingDisplay(in: shown.bounds)!
@@ -157,13 +154,9 @@ enum Snapshot {
         NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: rep)
         ap.performAsCurrentDrawingAppearance {
             let dark = ap.name == .darkAqua
-            // Stand-in desktop and HUD glass.
-            (dark ? NSColor(white: 0.32, alpha: 1) : NSColor(white: 0.85, alpha: 1)).setFill()
+            // Stand-in desktop behind the wheel.
+            (dark ? Brand.night : NSColor(srgbRed: 0.86, green: 0.88, blue: 0.94, alpha: 1)).setFill()
             bounds.fill()
-            let g = WheelGeometry(bounds: bounds)
-            (dark ? NSColor(white: 0.14, alpha: 0.92) : NSColor(white: 0.97, alpha: 0.92)).setFill()
-            g.centreDisc.fill()
-            for i in 0..<g.count { g.sector(i).fill() }
             view.draw(bounds)
         }
         NSGraphicsContext.restoreGraphicsState()

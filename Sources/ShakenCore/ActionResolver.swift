@@ -63,7 +63,7 @@ public enum ActionResolver {
     /// when it is opened without dragging anything.
     public static func defaultFallbacks() -> [Slot] {
         [
-            Slot(id: "fallback-downloads", kind: .folder, title: L("Downloads"), icon: "arrow.down.circle", target: ShakenPaths.downloads.path),
+            Slot(id: "fallback-downloads", kind: .folder, title: L("Downloads"), icon: "glyph:Downloads", target: ShakenPaths.downloads.path),
             Slot(id: "fallback-desktop", kind: .folder, title: L("Desktop"), icon: "menubar.dock.rectangle", target: ShakenPaths.desktop.path),
         ]
     }
@@ -155,7 +155,7 @@ public enum ActionResolver {
                 r.enabled = payload.isEmpty
             case .keys:
                 if r.title.isEmpty { r.title = KeyCombo(s.target)?.display ?? s.target }
-                if r.icon.isEmpty { r.icon = "keyboard" }
+                if r.icon.isEmpty { r.icon = "glyph:Keyboard" }
                 r.enabled = payload.isEmpty
             case .workflow:
                 if r.icon.isEmpty { r.icon = "list.bullet.rectangle" }
@@ -169,7 +169,7 @@ public enum ActionResolver {
             case .system:
                 let c = SystemControl(rawValue: s.target)
                 if r.title.isEmpty { r.title = c?.title ?? s.target }
-                if r.icon.isEmpty { r.icon = c?.icon ?? "gearshape" }
+                if r.icon.isEmpty { r.icon = c == .mute ? "glyph:Mute" : (c?.icon ?? "gearshape") }
                 r.enabled = payload.isEmpty
             case .delay:
                 r.title = L("Wait %@ s", s.target)
@@ -177,7 +177,7 @@ public enum ActionResolver {
                 r.enabled = false
             case .switcher:
                 // Children (the running apps) are filled in by the app when the wheel opens.
-                if r.icon.isEmpty { r.icon = "square.on.square" }
+                if r.icon.isEmpty { r.icon = "glyph:SwitchApp" }
                 if r.title.isEmpty { r.title = L("Switch app") }
                 r.enabled = payload.isEmpty || hasFiles
             }

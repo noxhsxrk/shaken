@@ -55,7 +55,7 @@ protocol WheelDelegate: AnyObject {
 }
 
 final class WheelController {
-    static let diameter: CGFloat = 340
+    static let diameter: CGFloat = 360
 
     weak var delegate: WheelDelegate?
     private let panel = FloatingPanel(size: NSSize(width: diameter, height: diameter))
@@ -168,16 +168,19 @@ final class WheelController {
 }
 
 /// Shared by the glass mask and the drawing: six tiles with even gaps around a centre disc.
+/// The asset kit's wheel (ShakenAssets/README.md), scaled from its 420 pt canvas:
+/// outer radius 202, ring inner radius 72, centre button 67, slots 57.6° wide with 2.4° gaps.
 struct WheelGeometry {
     let bounds: NSRect
     let count = ShakenSettings.slotCount
-    let innerRadius: CGFloat = 50     // centre disc
-    let ringGap: CGFloat = 5          // between disc and tiles
-    let tileGap: CGFloat = 5          // between tiles
+    static let gapDegrees: CGFloat = 2.4
 
+    var scale: CGFloat { min(bounds.width, bounds.height) / 420 }
     var center: NSPoint { NSPoint(x: bounds.midX, y: bounds.midY) }
-    var outerRadius: CGFloat { min(bounds.width, bounds.height) / 2 - 3 }
-    var ringInner: CGFloat { innerRadius + ringGap }
+    var outerRadius: CGFloat { 202 * scale }
+    var ringInner: CGFloat { 72 * scale }
+    /// The centre button.
+    var innerRadius: CGFloat { 67 * scale }
     var step: CGFloat { 360 / CGFloat(count) }
     /// Slot 0 is at the top; slots go clockwise.
     func midAngle(_ i: Int) -> CGFloat { 90 - CGFloat(i) * step }
@@ -186,14 +189,14 @@ struct WheelGeometry {
         NSBezierPath(ovalIn: NSRect(x: center.x - innerRadius, y: center.y - innerRadius, width: innerRadius * 2, height: innerRadius * 2))
     }
 
-    /// A tile whose sides are parallel, so the gap is the same width all the way out.
     func sector(_ i: Int) -> NSBezierPath {
         let mid = midAngle(i)
-        func half(_ r: CGFloat) -> CGFloat { asin(min(1, tileGap / 2 / r)) * 180 / .pi }
+        let half = (step - Self.gapDegrees) / 2
         let p = NSBezierPath()
-        p.appendArc(withCenter: center, radius: outerRadius, startAngle: mid - step / 2 + half(outerRadius), endAngle: mid + step / 2 - half(outerRadius))
-        p.appendArc(withCenter: center, radius: ringInner, startAngle: mid + step / 2 - half(ringInner), endAngle: mid - step / 2 + half(ringInner), clockwise: true)
+        p.appendArc(withCenter: center, radius: outerRadius, startAngle: mid + half, endAngle: mid - half, clockwise: true)
+        p.appendArc(withCenter: center, radius: ringInner, startAngle: mid - half, endAngle: mid + half)
         p.close()
+        p.lineJoinStyle = .round
         return p
     }
 
@@ -201,7 +204,7 @@ struct WheelGeometry {
     func index(at p: NSPoint) -> Int? {
         let dx = p.x - center.x, dy = p.y - center.y
         let d = hypot(dx, dy)
-        if d < innerRadius + ringGap / 2 { return -1 }
+        if d < (innerRadius + ringInner) / 2 { return -1 }
         if d > outerRadius + 2 { return nil }
         var deg = (90 - atan2(dy, dx) * 180 / .pi).truncatingRemainder(dividingBy: 360)
         if deg < 0 { deg += 360 }
@@ -265,11 +268,10 @@ final class WheelView: NSView {
 
     private var isDark: Bool { effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua }
     private var highContrast: Bool { NSWorkspace.shared.accessibilityDisplayShouldIncreaseContrast }
-    private var tileFill: NSColor { NSColor.labelColor.withAlphaComponent(highContrast ? 0.14 : (isDark ? 0.07 : 0.05)) }
-    private var rim: NSColor {
-        if highContrast { return NSColor.labelColor.withAlphaComponent(0.6) }
-        return isDark ? NSColor.white.withAlphaComponent(0.14) : NSColor.black.withAlphaComponent(0.08)
-    }
+    private var tileFill: NSColor { Brand.surface(dark: isDark) }
+    private var rim: NSColor { highContrast ? NSColor.labelColor.withAlphaComponent(0.6) : Brand.stroke(dark: isDark) }
+    private var ink: NSColor { Brand.text(dark: isDark) }
+    private var inkMuted: NSColor { ink.withAlphaComponent(0.6) }
 
     override func draw(_ dirtyRect: NSRect) {
         let g = geo
@@ -277,7 +279,7 @@ final class WheelView: NSView {
             let path = g.sector(i)
             let s = slot(i)
             let hot = hovered == i && s?.enabled == true
-            (hot ? NSColor.controlAccentColor : tileFill).setFill()
+            (hot ? Brand.accent : tileFill).setFill()
             path.fill()
             rim.setStroke()
             path.lineWidth = 1
@@ -287,7 +289,7 @@ final class WheelView: NSView {
 
         let disc = g.centreDisc
         let centreActive = hovered == -1 && (submenu != nil || mode == .drag)
-        (centreActive ? NSColor.controlAccentColor : tileFill).setFill()
+        (centreActive ? Brand.accent : tileFill).setFill()
         disc.fill()
         rim.setStroke()
         disc.lineWidth = 1
@@ -295,23 +297,24 @@ final class WheelView: NSView {
 
         let c = g.center, r = g.innerRadius
         if let page, submenu == nil, mode == .click { drawPage(page, centre: c) }
-        let fg: NSColor = centreActive ? .white : .labelColor
-        let sub: NSColor = centreActive ? .white.withAlphaComponent(0.85) : .secondaryLabelColor
+        let fg: NSColor = centreActive ? .white : ink
+        let sub: NSColor = centreActive ? .white.withAlphaComponent(0.85) : inkMuted
         if let parent = submenu {
-            drawSymbol("chevron.backward", size: 13, weight: .semibold, color: fg, at: NSPoint(x: c.x, y: c.y + 11))
+            drawSymbol("chevron.backward", size: 14, weight: .semibold, color: fg, at: NSPoint(x: c.x, y: c.y + 12))
             drawText(parent.title, in: NSRect(x: c.x - r + 10, y: c.y - 20, width: r * 2 - 20, height: 26),
                      font: .systemFont(ofSize: 10, weight: .medium), color: sub, lines: 2)
         } else if mode == .drag {
-            // Dropping in the middle parks the items on the shelf.
-            drawSymbol("tray.and.arrow.down.fill", size: 17, weight: .regular, color: centreActive ? .white : .controlAccentColor,
-                       at: NSPoint(x: c.x, y: c.y + 12))
-            drawText(centreActive ? L("Put on shelf") : summary, in: NSRect(x: c.x - r + 10, y: c.y - 24, width: r * 2 - 20, height: 28),
-                     font: .systemFont(ofSize: 10, weight: centreActive ? .semibold : .medium), color: centreActive ? .white : sub, lines: 2)
+            // What's being dragged, and that dropping in the middle parks it on the shelf.
+            drawSymbol(centreActive ? "glyph:Shelf" : "glyph:Stack", size: 18, weight: .regular, color: fg, at: NSPoint(x: c.x, y: c.y + 18))
+            drawText(centreActive ? L("Put on shelf") : summary, in: NSRect(x: c.x - r + 10, y: c.y - 6, width: r * 2 - 20, height: 16),
+                     font: .systemFont(ofSize: 12, weight: .semibold), color: fg, lines: 1)
+            drawText(L("Drop to shelf"), in: NSRect(x: c.x - r + 10, y: c.y - 24, width: r * 2 - 20, height: 14),
+                     font: .systemFont(ofSize: 9.5), color: sub, lines: 1)
         } else if shelfCount > 0 {
             let lift: CGFloat = page != nil ? 6 : 0
-            drawSymbol("tray.full.fill", size: 17, weight: .regular, color: .controlAccentColor, at: NSPoint(x: c.x, y: c.y + 12 + lift))
+            drawSymbol("glyph:Shelf", size: 18, weight: .regular, color: ink, at: NSPoint(x: c.x, y: c.y + 12 + lift))
             drawText(L("Shelf · %@", String(shelfCount)), in: NSRect(x: c.x - r + 10, y: c.y - 20 + lift, width: r * 2 - 20, height: 20),
-                     font: .systemFont(ofSize: 10.5, weight: .semibold), color: .labelColor, lines: 1)
+                     font: .systemFont(ofSize: 11.5, weight: .semibold), color: ink, lines: 1)
         } else {
             // Leave room at the bottom for the page name and dots.
             let hasPage = page != nil
@@ -324,7 +327,7 @@ final class WheelView: NSView {
     private func drawPage(_ page: WheelPageInfo, centre c: NSPoint) {
         let r = geo.innerRadius
         drawText(page.name, in: NSRect(x: c.x - r + 10, y: c.y - r + 15, width: r * 2 - 20, height: 12),
-                 font: .systemFont(ofSize: 9, weight: .semibold), color: .secondaryLabelColor, lines: 1)
+                 font: .systemFont(ofSize: 9, weight: .semibold), color: inkMuted, lines: 1)
         let dot: CGFloat = 4.5, gap: CGFloat = 4
         let shown = min(page.count, 9)
         let width = CGFloat(shown) * dot + CGFloat(shown - 1) * gap
@@ -332,7 +335,7 @@ final class WheelView: NSView {
         let y = c.y - r + 8
         for i in 0..<shown {
             let current = i == min(page.index, shown - 1)
-            (current ? NSColor.controlAccentColor : NSColor.tertiaryLabelColor).setFill()
+            (current ? Brand.accent : inkMuted.withAlphaComponent(0.35)).setFill()
             NSBezierPath(ovalIn: NSRect(x: x, y: y, width: dot, height: dot)).fill()
             x += dot + gap
         }
@@ -341,25 +344,25 @@ final class WheelView: NSView {
     private func drawSlot(_ s: ResolvedSlot, angle: CGFloat, highlighted: Bool) {
         guard s.kind != .empty else { return }
         let g = geo
-        let r = (g.ringInner + g.outerRadius) / 2
+        let r = 141 * g.scale   // label centre radius from the kit
         let rad = angle * .pi / 180
         let p = NSPoint(x: g.center.x + cos(rad) * r, y: g.center.y + sin(rad) * r)
-        let color: NSColor = !s.enabled ? .tertiaryLabelColor : (highlighted ? .white : .labelColor)
-        let iconColor: NSColor = !s.enabled ? .tertiaryLabelColor : (highlighted ? .white : .controlAccentColor)
+        let color: NSColor = !s.enabled ? ink.withAlphaComponent(0.35) : (highlighted ? .white : ink)
+        let iconColor = color
         // Icon, title (1–2 lines) and note stacked as one block centred on the tile.
-        let titleFont = NSFont.systemFont(ofSize: 11, weight: .medium)
+        let titleFont = NSFont.systemFont(ofSize: 12, weight: .medium)
         let titleH = textHeight(s.title, font: titleFont, width: 96, lines: 2)
         let iconH: CGFloat = 24, gap: CGFloat = 5, noteH: CGFloat = s.note == nil ? 0 : 14
         let extraH: CGFloat = s.kind.opensRing ? 12 : 0
         let total = iconH + gap + titleH + noteH + extraH
         var y = p.y + total / 2
-        drawSymbol(s.icon.isEmpty ? "bolt.fill" : s.icon, size: 21, weight: .medium, color: iconColor, at: NSPoint(x: p.x, y: y - iconH / 2))
+        drawSymbol(s.icon.isEmpty ? "bolt.fill" : s.icon, size: 22, weight: .regular, color: iconColor, at: NSPoint(x: p.x, y: y - iconH / 2))
         y -= iconH + gap
         drawText(s.title, in: NSRect(x: p.x - 48, y: y - titleH, width: 96, height: titleH), font: titleFont, color: color, lines: 2)
         y -= titleH
         if let note = s.note {
             drawText(note, in: NSRect(x: p.x - 48, y: y - noteH, width: 96, height: noteH),
-                     font: .systemFont(ofSize: 9, weight: .medium), color: highlighted ? .white : .systemOrange, lines: 1)
+                     font: .systemFont(ofSize: 9, weight: .medium), color: highlighted ? .white : NSColor.systemOrange, lines: 1)
             y -= noteH
         }
         if s.kind.opensRing {
@@ -376,6 +379,14 @@ final class WheelView: NSView {
     }
 
     private func drawSymbol(_ name: String, size: CGFloat, weight: NSFont.Weight, color: NSColor, at p: NSPoint) {
+        // Shaken's own glyphs from the asset kit.
+        if name.hasPrefix(Brand.glyphPrefix) {
+            let side = size + 2
+            if let img = Brand.tinted(String(name.dropFirst(Brand.glyphPrefix.count)), color: color, side: side) {
+                img.draw(in: NSRect(x: p.x - side / 2, y: p.y - side / 2, width: side, height: side))
+                return
+            }
+        }
         // A path means "use this app's or file's own icon".
         if name.hasPrefix("/") {
             let side = size * 1.45

@@ -16,6 +16,7 @@ final class ShelfTrayController {
     weak var ownDrag: DragMonitor?
     private let panel = FloatingPanel(size: NSSize(width: 360, height: 118))
     let effect = NSVisualEffectView()
+    private let surface = BrandSurfaceView()
     private(set) var isDragging = false
 
     var isVisible: Bool { panel.isVisible }
@@ -28,6 +29,9 @@ final class ShelfTrayController {
         effect.wantsLayer = true
         effect.layer?.cornerRadius = 16
         effect.layer?.masksToBounds = true
+        surface.frame = effect.bounds
+        surface.autoresizingMask = [.width, .height]
+        effect.addSubview(surface)
         panel.contentView = effect
     }
 
@@ -47,8 +51,13 @@ final class ShelfTrayController {
     /// Lays out the tray for `items` and returns the size it needs.
     @discardableResult
     func build(items: [ShelfItem]) -> NSSize {
-        effect.subviews.forEach { $0.removeFromSuperview() }
+        effect.subviews.filter { $0 !== surface }.forEach { $0.removeFromSuperview() }
 
+        let shelfIcon = NSImageView(image: Brand.glyph("Shelf") ?? NSImage())
+        shelfIcon.contentTintColor = Brand.accent
+        shelfIcon.translatesAutoresizingMaskIntoConstraints = false
+        shelfIcon.widthAnchor.constraint(equalToConstant: 16).isActive = true
+        shelfIcon.heightAnchor.constraint(equalToConstant: 16).isActive = true
         let title = NSTextField(labelWithString: L("Shelf"))
         title.font = .systemFont(ofSize: 12, weight: .semibold)
         let count = NSTextField(labelWithString: String(items.count))
@@ -60,7 +69,7 @@ final class ShelfTrayController {
         clear.contentTintColor = .secondaryLabelColor
         let spacer = NSView()
         spacer.setContentHuggingPriority(.init(1), for: .horizontal)
-        let header = NSStackView(views: [title, count, spacer, clear])
+        let header = NSStackView(views: [shelfIcon, title, count, spacer, clear])
         header.orientation = .horizontal
         header.spacing = 6
 
@@ -166,10 +175,10 @@ final class ShelfTileView: NSView, NSDraggingSource {
         image.layer?.cornerRadius = 6
         image.layer?.masksToBounds = true
         if isAll {
-            image.image = symbol("square.stack.3d.up.fill", size: 24, color: .white)
+            image.image = Brand.tinted("Stack", color: .white, side: 24) ?? symbol("square.stack.3d.up.fill", size: 24, color: .white)
             image.imageScaling = .scaleNone
             image.layer?.cornerRadius = 12
-            image.layer?.backgroundColor = NSColor.controlAccentColor.cgColor
+            image.layer?.backgroundColor = Brand.accent.cgColor
             image.frame = NSRect(x: (Self.size.width - 44) / 2, y: 32, width: 44, height: 44)
         } else {
             image.image = icon(for: items[0])
@@ -212,7 +221,7 @@ final class ShelfTileView: NSView, NSDraggingSource {
         removeButton.isHidden = !hovering
     }
 
-    private func symbol(_ name: String, size: CGFloat = 24, color: NSColor = .controlAccentColor) -> NSImage? {
+    private func symbol(_ name: String, size: CGFloat = 24, color: NSColor = Brand.accent) -> NSImage? {
         NSImage(systemSymbolName: name, accessibilityDescription: nil)?
             .withSymbolConfiguration(NSImage.SymbolConfiguration(pointSize: size, weight: .medium).applying(.init(paletteColors: [color])))
     }
@@ -220,7 +229,7 @@ final class ShelfTileView: NSView, NSDraggingSource {
     private func icon(for item: ShelfItem) -> NSImage? {
         switch item.kind {
         case .file: return NSWorkspace.shared.icon(forFile: item.value)
-        case .link: return symbol("link")
+        case .link: return Brand.tinted("Link", color: Brand.accent, side: 26) ?? symbol("link")
         case .text: return symbol("text.alignleft")
         }
     }
