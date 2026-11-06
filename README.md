@@ -69,7 +69,7 @@ Requires macOS 13 or later. Free, MIT licensed.
 - [Controls](#controls)
 - [What a slot can do](#what-a-slot-can-do)
 - [The shelf](#the-shelf)
-- [Wheels per app, and sharing wheels](#wheels-per-app-and-sharing-wheels)
+- [More wheels, per-app wheels, and sharing](#more-wheels-per-app-wheels-and-sharing)
 - [Built-in commands](#built-in-commands)
 - [Writing a command](#writing-a-command)
 - [Command packs from Git](#command-packs-from-git)
@@ -127,7 +127,7 @@ then act on everything on the shelf, for example to zip all of it at once.
 
 ### Scene 4: a different wheel in every app
 
-1. In *Settings → Wheel*, choose **Add App Wheel…** and pick Safari. Give it slots for
+1. In *Settings → Wheel*, choose **Add Wheel → Wheel for an App…** and pick Safari. Give it slots for
    *Reader mode* (keys `cmd+shift+r`), *Translate this page* (a Shortcut) and your bookmarks.
 2. Back in Safari, press ⌃⌥Space. The Safari wheel opens instead of the main one.
 3. Press **⌘←** or **⌘→**, or swipe sideways with two fingers, to flip to the main wheel, to your other app wheels, or to
@@ -158,8 +158,12 @@ When something fails, the chip says what went wrong in plain words and stays unt
 
 ## Install
 
-Download the latest DMG from [Releases](https://github.com/noxhsxrk/shaken/releases), drag Shaken to Applications and open it. A hand icon appears in
+Download the latest DMG from [Releases](https://github.com/noxhsxrk/shaken/releases), drag Shaken to Applications and open it. A wheel icon appears in
 the menu bar. There is no Dock icon. Opening Shaken again shows Settings.
+
+The current builds aren't notarized by Apple yet, so the first time macOS says it can't check
+Shaken for malware. Open *System Settings → Privacy & Security* and choose **Open Anyway**, or
+run `xattr -dr com.apple.quarantine /Applications/Shaken.app` once.
 
 To build from source you need Xcode installed, but you never have to open it:
 
@@ -203,7 +207,7 @@ and selecting text never trigger it.
 | Return or Space | Pick the highlighted slot |
 | 1 – 6 | Pick that slot at once (1 is the top, then clockwise) |
 | Delete | Leave a submenu |
-| ⌘← ⌘→ (or Tab, ⇧Tab) | Switch between the main wheel, app wheels and *Running apps* |
+| ⌘← ⌘→ (or Tab, ⇧Tab) | Switch between the main wheel, your other wheels, app wheels and *Running apps* |
 | Two-finger swipe sideways | The same, on a trackpad or Magic Mouse, with the pointer over the wheel |
 | Esc | Close |
 
@@ -275,9 +279,13 @@ and Desktop.
 
 ---
 
-## Wheels per app, and sharing wheels
+## More wheels, per-app wheels, and sharing
 
-**Per-app wheels.** In *Settings → Wheel*, **Add App Wheel…** gives an app its own six slots. It
+**More wheels.** In *Settings → Wheel*, **Add Wheel → Blank Wheel** adds an empty wheel you can
+name and fill however you like ("Media", "Work", "Snippets"). Open the wheel without dragging and
+flip to it with ⌘← / ⌘→ or a two-finger swipe. The arrows next to its name set the order.
+
+**Per-app wheels.** **Add Wheel → Wheel for an App…** gives an app its own six slots. It
 replaces the main wheel when that app is in front and you open the wheel without dragging.
 Drags always use the main wheel, so your hand never has to relearn it. Press ⌘← or ⌘→ to reach
 the other wheels; the dots in the centre show where you are.

@@ -152,3 +152,23 @@ import Testing
         #expect(p.slots[1].children.first?.kind == .empty)
     }
 }
+
+@Suite struct NamedWheelTests {
+    @Test func blankWheelsAreValidatedAndNamed() throws {
+        var s = ShakenSettings()
+        s.wheels = [NamedWheel(id: "a", name: "  ", slots: [Slot(kind: .system, target: "mute")]),
+                    NamedWheel(id: "a", name: "Work")]
+        let v = s.validated()
+        #expect(v.wheels.count == 2)
+        #expect(v.wheels[0].name == "Wheel 2")
+        #expect(v.wheels[0].slots.count == ShakenSettings.slotCount)
+        #expect(v.wheels[0].slots[0].kind == .system)
+        #expect(v.wheels[0].id != v.wheels[1].id)
+        #expect(try JSONDecoder().decode(ShakenSettings.self, from: JSONEncoder().encode(v)) == v)
+    }
+
+    @Test func olderSettingsWithoutWheelsStillLoad() throws {
+        let json = #"{"version":1,"slots":[]}"#
+        #expect(try JSONDecoder().decode(ShakenSettings.self, from: Data(json.utf8)).wheels.isEmpty)
+    }
+}

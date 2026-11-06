@@ -47,6 +47,17 @@ public enum SlotKind: String, Codable, CaseIterable, Sendable {
     public static let wheelKinds: [SlotKind] = allCases.filter { $0 != .delay }
 }
 
+/// An extra wheel of your own, reached with ⌘← / ⌘→ or a swipe. Not tied to any app.
+public struct NamedWheel: Codable, Equatable, Identifiable, Sendable {
+    public var id: String
+    public var name: String
+    public var slots: [Slot]
+    public init(id: String = UUID().uuidString, name: String,
+                slots: [Slot] = (0..<ShakenSettings.slotCount).map { _ in Slot(kind: .empty) }) {
+        self.id = id; self.name = name; self.slots = slots
+    }
+}
+
 /// A wheel used instead of the main one when this app is in front and nothing is dragged.
 public struct AppWheel: Codable, Equatable, Sendable {
     public var name: String
@@ -133,6 +144,9 @@ public struct ShakenSettings: Codable, Equatable, Sendable {
     public var approvals: [String: [String: String]] = [:]
     /// Bundle id → wheel shown when that app is in front and nothing is dragged.
     public var appWheels: [String: AppWheel] = [:]
+    /// Extra wheels, in the order they're flipped through after the main one.
+    public var wheels: [NamedWheel] = []
+    public static let maxWheels = 20
 
     /// The slots for a wheel opened without dragging while `bundleID` is in front.
     public func clickSlots(frontApp bundleID: String?) -> [Slot] {
@@ -181,6 +195,15 @@ public struct ShakenSettings: Codable, Equatable, Sendable {
         for (k, v) in s.appWheels {
             if k.isEmpty { s.appWheels[k] = nil; continue }
             s.appWheels[k] = AppWheel(name: v.name, slots: fixWheel(v.slots))
+        }
+        var wheelIDs = Set<String>()
+        s.wheels = Array(s.wheels.prefix(Self.maxWheels)).enumerated().map { i, w in
+            var x = w
+            if x.id.isEmpty || !wheelIDs.insert(x.id).inserted { x.id = UUID().uuidString; wheelIDs.insert(x.id) }
+            x.name = x.name.trimmingCharacters(in: .whitespacesAndNewlines)
+            if x.name.isEmpty { x.name = L("Wheel %@", String(i + 2)) }
+            x.slots = fixWheel(x.slots)
+            return x
         }
         return s.finishValidation()
     }
@@ -261,7 +284,7 @@ public final class SettingsStore {
 // Decoding tolerates missing keys so older files keep working.
 extension ShakenSettings {
     enum CodingKeys: String, CodingKey {
-        case version, slots, gesture, excludedApps, hotKey, shrinkTargetKB, kindPreferences, approvals, appWheels
+        case version, slots, gesture, excludedApps, hotKey, shrinkTargetKB, kindPreferences, approvals, appWheels, wheels
     }
 
     public init(from d: Decoder) throws {
@@ -275,6 +298,7 @@ extension ShakenSettings {
         kindPreferences = try c.decodeIfPresent([String: KindPreference].self, forKey: .kindPreferences) ?? [:]
         approvals = try c.decodeIfPresent([String: [String: String]].self, forKey: .approvals) ?? [:]
         appWheels = try c.decodeIfPresent([String: AppWheel].self, forKey: .appWheels) ?? [:]
+        wheels = try c.decodeIfPresent([NamedWheel].self, forKey: .wheels) ?? []
     }
 }
 

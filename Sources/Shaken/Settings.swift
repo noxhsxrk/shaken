@@ -116,17 +116,59 @@ struct SettingsView: View {
 // MARK: - Wheel (R3)
 
 extension SettingsModel {
-    /// The wheel being edited: nil = main wheel, otherwise an app's bundle id.
+    // wheelScope: nil = main wheel, "wheel:<id>" = one of your extra wheels, otherwise an app's bundle id.
+    static let namedPrefix = "wheel:"
+
+    var editingNamedIndex: Int? {
+        guard let scope = wheelScope, scope.hasPrefix(Self.namedPrefix) else { return nil }
+        let id = String(scope.dropFirst(Self.namedPrefix.count))
+        return settings.wheels.firstIndex { $0.id == id }
+    }
+
+    var editingAppID: String? {
+        guard let scope = wheelScope, !scope.hasPrefix(Self.namedPrefix), settings.appWheels[scope] != nil else { return nil }
+        return scope
+    }
+
+    var editingName: String {
+        if let i = editingNamedIndex { return settings.wheels[i].name }
+        if let id = editingAppID { return settings.appWheels[id]?.name ?? "" }
+        return L("Main")
+    }
+
     var editingSlots: [Slot] {
-        if let id = wheelScope, let w = settings.appWheels[id] { return w.slots }
+        if let i = editingNamedIndex { return settings.wheels[i].slots }
+        if let id = editingAppID, let w = settings.appWheels[id] { return w.slots }
         return settings.slots
     }
 
     func updateSlots(_ change: @escaping (inout [Slot]) -> Void) {
-        let scope = wheelScope
+        let named = editingNamedIndex.map { settings.wheels[$0].id }
+        let app = editingAppID
         update { s in
-            if let id = scope, var w = s.appWheels[id] { change(&w.slots); s.appWheels[id] = w } else { change(&s.slots) }
+            if let named, let i = s.wheels.firstIndex(where: { $0.id == named }) { change(&s.wheels[i].slots) }
+            else if let app, var w = s.appWheels[app] { change(&w.slots); s.appWheels[app] = w }
+            else { change(&s.slots) }
         }
+    }
+
+    func addBlankWheel() {
+        guard settings.wheels.count < ShakenSettings.maxWheels else { return }
+        let w = NamedWheel(name: L("Wheel %@", String(settings.wheels.count + 2)))
+        update { $0.wheels.append(w) }
+        wheelScope = Self.namedPrefix + w.id
+    }
+
+    func renameWheel(_ name: String) {
+        guard let i = editingNamedIndex else { return }
+        let id = settings.wheels[i].id
+        update { s in if let j = s.wheels.firstIndex(where: { $0.id == id }) { s.wheels[j].name = name } }
+    }
+
+    /// Moves an extra wheel earlier or later in the ⌘← / ⌘→ order.
+    func moveWheel(by d: Int) {
+        guard let i = editingNamedIndex, settings.wheels.indices.contains(i + d) else { return }
+        update { $0.wheels.swapAt(i, i + d) }
     }
 
     func addAppWheel() {
@@ -140,8 +182,8 @@ extension SettingsModel {
     }
 
     func exportWheel() {
-        let name = wheelScope.flatMap { settings.appWheels[$0]?.name } ?? L("My wheel")
-        let preset = WheelPreset(name: name, app: wheelScope, slots: editingSlots)
+        let name = editingName
+        let preset = WheelPreset(name: name, app: editingAppID, slots: editingSlots)
         let p = NSSavePanel()
         p.nameFieldStringValue = name + "." + WheelPreset.fileExtension
         p.allowedContentTypes = [UTType(filenameExtension: WheelPreset.fileExtension) ?? .json]
@@ -203,23 +245,36 @@ extension SettingsModel {
         }
         let appName = preset.app.flatMap { NSWorkspace.shared.urlForApplication(withBundleIdentifier: $0) }
             .map { FileManager.default.displayName(atPath: $0.path).replacingOccurrences(of: ".app", with: "") }
-        if let appName { alert.addButton(withTitle: L("Use in %@", appName)) }
-        alert.addButton(withTitle: L("Replace Main Wheel"))
-        alert.addButton(withTitle: L("Cancel"))
-        let r = alert.runModal()
-        if let appName, let id = preset.app, r == .alertFirstButtonReturn {
-            update { $0.appWheels[id] = AppWheel(name: appName, slots: preset.slots) }
-            wheelScope = id
-        } else if r == (appName == nil ? .alertFirstButtonReturn : .alertSecondButtonReturn) {
-            update { $0.slots = preset.slots }
-            wheelScope = nil
+        // Buttons, in order: [Use in <app>], Add as New Wheel, Replace Main Wheel, Cancel.
+        var choices: [() -> Void] = []
+        if let appName, let id = preset.app {
+            alert.addButton(withTitle: L("Use in %@", appName))
+            choices.append { self.update { $0.appWheels[id] = AppWheel(name: appName, slots: preset.slots) }; self.wheelScope = id }
         }
+        if settings.wheels.count < ShakenSettings.maxWheels {
+            alert.addButton(withTitle: L("Add as New Wheel"))
+            choices.append {
+                let w = NamedWheel(name: preset.name, slots: preset.slots)
+                self.update { $0.wheels.append(w) }
+                self.wheelScope = Self.namedPrefix + w.id
+            }
+        }
+        alert.addButton(withTitle: L("Replace Main Wheel"))
+        choices.append { self.update { $0.slots = preset.slots }; self.wheelScope = nil }
+        alert.addButton(withTitle: L("Cancel"))
+        let i = alert.runModal().rawValue - NSApplication.ModalResponse.alertFirstButtonReturn.rawValue
+        if choices.indices.contains(i) { choices[i]() }
     }
 
-    func removeAppWheel() {
-        guard let id = wheelScope else { return }
-        wheelScope = nil
-        update { $0.appWheels[id] = nil }
+    func removeWheel() {
+        if let i = editingNamedIndex {
+            let id = settings.wheels[i].id
+            wheelScope = nil
+            update { $0.wheels.removeAll { $0.id == id } }
+        } else if let id = editingAppID {
+            wheelScope = nil
+            update { $0.appWheels[id] = nil }
+        }
     }
 }
 
@@ -233,14 +288,28 @@ struct WheelTab: View {
             HStack {
                 Picker(L("Wheel"), selection: $model.wheelScope) {
                     Text(L("Main wheel")).tag(String?.none)
-                    ForEach(model.settings.appWheels.sorted { $0.value.name < $1.value.name }, id: \.key) { id, w in
-                        Text(L("In %@", w.name)).tag(String?.some(id))
+                    if !model.settings.wheels.isEmpty {
+                        Divider()
+                        ForEach(model.settings.wheels) { w in
+                            Text(w.name).tag(String?.some(SettingsModel.namedPrefix + w.id))
+                        }
+                    }
+                    if !model.settings.appWheels.isEmpty {
+                        Divider()
+                        ForEach(model.settings.appWheels.sorted { $0.value.name < $1.value.name }, id: \.key) { id, w in
+                            Text(L("In %@", w.name)).tag(String?.some(id))
+                        }
                     }
                 }
-                .frame(maxWidth: 300)
-                Button(L("Add App Wheel…")) { model.addAppWheel() }
+                .frame(maxWidth: 280)
+                Menu(L("Add Wheel")) {
+                    Button(L("Blank Wheel")) { model.addBlankWheel() }
+                        .disabled(model.settings.wheels.count >= ShakenSettings.maxWheels)
+                    Button(L("Wheel for an App…")) { model.addAppWheel() }
+                }
+                .frame(width: 110)
                 if model.wheelScope != nil {
-                    Button(L("Remove"), role: .destructive) { model.removeAppWheel() }
+                    Button(L("Remove"), role: .destructive) { model.removeWheel() }
                 }
                 Spacer()
                 Menu(L("Share")) {
@@ -251,8 +320,21 @@ struct WheelTab: View {
                 }
                 .frame(width: 90)
             }
+            if let i = model.editingNamedIndex {
+                HStack {
+                    TextField(L("Name"), text: Binding(get: { model.settings.wheels.indices.contains(i) ? model.settings.wheels[i].name : "" },
+                                                       set: { model.renameWheel($0) }))
+                        .frame(maxWidth: 220)
+                    Button { model.moveWheel(by: -1) } label: { Image(systemName: "chevron.left") }
+                        .disabled(i == 0).help(L("Earlier in the ⌘← / ⌘→ order"))
+                    Button { model.moveWheel(by: 1) } label: { Image(systemName: "chevron.right") }
+                        .disabled(i == model.settings.wheels.count - 1).help(L("Later in the ⌘← / ⌘→ order"))
+                }
+            }
             Text(model.wheelScope == nil
                  ? L("Used while dragging, and without dragging in apps that have no wheel of their own.")
+                 : model.editingNamedIndex != nil
+                 ? L("An extra wheel. Open the wheel without dragging, then flip to it with ⌘← / ⌘→ or a two-finger swipe.")
                  : L("Shown instead of the main wheel when this app is in front and you open the wheel without dragging."))
                 .font(.caption).foregroundStyle(.secondary)
             Divider()

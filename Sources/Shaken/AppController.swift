@@ -132,13 +132,15 @@ final class AppController: NSObject, WheelDelegate, ChipDelegate, ShelfTrayDeleg
         clickPayload = payload
         clickActions = actions
         clickSummary = summary
-        // Pages: the main wheel, each app's wheel, then running apps. Start on the front app's own wheel.
+        // Pages: the main wheel, your extra wheels, each app's wheel, then running apps. Start on the front app's own wheel.
         let front = NSWorkspace.shared.frontmostApplication?.bundleIdentifier
         let appWheels = store.settings.appWheels.sorted { $0.value.name < $1.value.name }
+        let extra = store.settings.wheels
         pages = [WheelPage(name: L("Main"), slots: store.settings.slots)]
+            + extra.map { WheelPage(name: $0.name, slots: $0.slots) }
             + appWheels.map { WheelPage(name: $0.value.name, slots: $0.value.slots) }
             + [WheelPage(name: L("Running apps"), slots: nil)]
-        pageIndex = appWheels.firstIndex { $0.key == front }.map { $0 + 1 } ?? 0
+        pageIndex = appWheels.firstIndex { $0.key == front }.map { $0 + 1 + extra.count } ?? 0
         let slots = layoutPage(pageIndex)
         chip.close()
         wheel.show(at: p, slots: slots, summary: summary, mode: .click, shelfCount: shelf.items.count, page: pageLabel)
