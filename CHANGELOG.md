@@ -14,6 +14,8 @@ All notable changes to Shaken. Versions follow [Semantic Versioning](https://sem
 - Shortcut output and files scripts write to `$SHAKEN_OUTPUT` appear in the chip.
 - Shake while dragging the chip or a shelf tile to chain another command.
 - Designed installer window.
+- Glass wheel: rounded tile corners, translucent gradient surfaces with a light edge, a gradient on the selected slot, and slot numbers shown in click mode. Follows Reduce Transparency and Increase Contrast.
+- The shelf is a horizontal strip with thumbnails and names side by side, and the wheel leaves room for it below.
 
 ### Fixed
 - Choosing App, File or Keyboard shortcut for a slot no longer snaps back to Empty before it's filled in.

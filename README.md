@@ -210,7 +210,7 @@ and selecting text never trigger it.
 |---|---|
 | ← → (or ↑ ↓) | Move around the wheel |
 | Return or Space | Pick the highlighted slot |
-| 1 – 6 | Pick that slot at once (1 is the top, then clockwise) |
+| 1 – 6 | Pick that slot at once. Each slot shows its number (1 is the top, then clockwise) |
 | Delete | Leave a submenu |
 | ⌘← ⌘→ (or Tab, ⇧Tab) | Switch between the main wheel, your other wheels, app wheels and *Running apps* |
 | Two-finger swipe sideways | The same, on a trackpad or Magic Mouse, with the pointer over the wheel |
@@ -458,7 +458,7 @@ Gesture detector -> Drag reader -> Action resolver -> Wheel overlay -> Job runne
 | Shelf | `ShakenCore/Shelf.swift`, `Shaken/ShelfTray.swift` | Items kept by reference in a JSON file. |
 | Slot actions | `ShakenCore/Shortcuts.swift`, `InlineScript.swift`, `KeyCombo.swift`, `SystemControl.swift`, `Shaken/Typing.swift` | Shortcuts through `/usr/bin/shortcuts`, scripts through zsh and `osascript`, keys through `CGEvent`. |
 | Settings | `ShakenCore/Settings.swift`, `WheelPreset.swift` | Versioned `Codable` JSON with stable slot ids, validated on load, save and import. |
-| Look | `Shaken/Brand.swift`, `Resources/Glyphs`, `ShakenAssets/` | Palette, glyphs, app icon and menu bar icon from the Shaken asset kit. |
+| Look | `Shaken/Brand.swift`, `Shaken/Wheel.swift`, `Resources/` | Glass surfaces, palette, glyphs, app icon and menu bar icon. Respects Reduce Transparency and Increase Contrast. |
 | Gallery and updates | `ShakenCore/Gallery.swift`, `UpdateCheck.swift`, `gallery/` | Both read public files from this repository. |
 | Packs | `ShakenCore/PackManager.swift` | Clone, fingerprint, approve, update, remove. |
 
