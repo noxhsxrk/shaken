@@ -325,6 +325,13 @@ struct WheelTab: View {
                     TextField(L("Name"), text: Binding(get: { model.settings.wheels.indices.contains(i) ? model.settings.wheels[i].name : "" },
                                                        set: { model.renameWheel($0) }))
                         .frame(maxWidth: 220)
+                    HotKeyRecorder(value: Binding(
+                        get: { model.settings.wheels.indices.contains(i) ? model.settings.wheels[i].hotKey : .none },
+                        set: { v in
+                            let id = model.settings.wheels[i].id
+                            model.update { s in if let j = s.wheels.firstIndex(where: { $0.id == id }) { s.wheels[j].hotKey = v } }
+                        }), defaultValue: .none, placeholder: L("Add shortcut"))
+                        .help(L("Opens the wheel straight on this one"))
                     Button { model.moveWheel(by: -1) } label: { Image(systemName: "chevron.left") }
                         .disabled(i == 0).help(L("Earlier in the ⌘← / ⌘→ order"))
                     Button { model.moveWheel(by: 1) } label: { Image(systemName: "chevron.right") }
@@ -729,6 +736,89 @@ struct SlotBubble: View {
     }
 }
 
+// MARK: - Shortcut recorder
+
+/// Click, then press a key combination. Esc cancels, Delete clears.
+struct HotKeyRecorder: View {
+    @EnvironmentObject var model: SettingsModel
+    @Binding var value: HotKeySetting
+    let defaultValue: HotKeySetting
+    var placeholder = L("None")
+    @State private var recording = false
+    @State private var monitor: Any?
+    @State private var problem: String?
+
+    var body: some View {
+        VStack(alignment: .trailing, spacing: 4) {
+            HStack(spacing: 6) {
+                Button(action: toggle) {
+                    Text(recording ? L("Press keys…") : (value.isSet ? value.display : placeholder))
+                        .font(.system(.body, design: .rounded).weight(value.isSet && !recording ? .semibold : .regular))
+                        .foregroundStyle(recording ? Color.accentColor : (value.isSet ? Color.primary : Color.secondary))
+                        .frame(minWidth: 110)
+                }
+                .accessibilityLabel(L("Keyboard shortcut"))
+                .accessibilityValue(value.isSet ? value.display : L("None"))
+                if value.isSet && !recording {
+                    Button { set(.none) } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary) }
+                        .buttonStyle(.borderless).help(L("Remove shortcut"))
+                }
+                if defaultValue.isSet && value != defaultValue && !recording {
+                    Button(L("Default")) { set(defaultValue) }.buttonStyle(.borderless)
+                }
+            }
+            if let problem {
+                Text(problem).font(.caption).foregroundStyle(.orange).fixedSize(horizontal: false, vertical: true)
+            } else if value.isSet && model.app.failedHotKeys.contains(value.display) {
+                Text(L("Another app already uses %@. Pick a different one.", value.display))
+                    .font(.caption).foregroundStyle(.orange)
+            }
+        }
+        .onDisappear(perform: stop)
+    }
+
+    private func toggle() { recording ? stop() : start() }
+
+    private func start() {
+        problem = nil
+        recording = true
+        model.app.suspendHotKeys(true)
+        monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { e in
+            switch Int(e.keyCode) {
+            case 53: stop()                         // Esc
+            case 51, 117: set(.none); stop()        // Delete clears
+            default:
+                var mods: UInt32 = 0
+                let f = e.modifierFlags
+                if f.contains(.command) { mods |= HotKeySetting.cmd }
+                if f.contains(.shift) { mods |= HotKeySetting.shift }
+                if f.contains(.option) { mods |= HotKeySetting.option }
+                if f.contains(.control) { mods |= HotKeySetting.control }
+                switch HotKeySetting.make(keyCode: UInt32(e.keyCode), modifiers: mods) {
+                case .success(let hk): set(hk); stop()
+                case .failure(let err): problem = err.errorDescription
+                }
+            }
+            return nil   // swallow the key while recording
+        }
+    }
+
+    private func stop() {
+        if let monitor { NSEvent.removeMonitor(monitor) }
+        monitor = nil
+        if recording { recording = false; model.app.suspendHotKeys(false) }
+    }
+
+    private func set(_ hk: HotKeySetting) {
+        value = hk
+        problem = nil
+        // Validation drops a wheel shortcut that repeats another one; say so instead of failing silently.
+        DispatchQueue.main.async {
+            if hk.isSet && value != hk { problem = L("%@ is already used by another wheel or the main shortcut.", hk.display) }
+        }
+    }
+}
+
 // MARK: - Gesture (R1, R2)
 
 struct GestureTab: View {
@@ -758,13 +848,11 @@ struct GestureTab: View {
                 Toggle(L("⌥ + shake opens the wheel"), isOn: model.binding(\.gesture.optionShakeWithoutDrag))
                 Text(L("A bare shake never opens it, because macOS uses that to enlarge the pointer."))
                     .font(.caption).foregroundStyle(.secondary)
-                Picker(L("Keyboard shortcut"), selection: Binding(
-                    get: { HotKeySetting.presets.firstIndex(of: model.settings.hotKey) ?? 0 },
-                    set: { i in model.update { $0.hotKey = HotKeySetting.presets[i] } })) {
-                    ForEach(Array(HotKeySetting.presets.enumerated()), id: \.offset) { i, p in
-                        Text(p.keyCode == nil ? L("None") : p.display).tag(i)
-                    }
+                LabeledContent(L("Keyboard shortcut")) {
+                    HotKeyRecorder(value: model.binding(\.hotKey), defaultValue: .default)
                 }
+                Text(L("Click the shortcut, then press the keys you want. Esc cancels."))
+                    .font(.caption).foregroundStyle(.secondary)
             }
             Section(L("Ignore shakes in these apps")) {
                 ExcludedApps()

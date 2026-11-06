@@ -26,6 +26,10 @@ final class AppController: NSObject, WheelDelegate, ChipDelegate, ShelfTrayDeleg
 
     var statusItem: NSStatusItem!
     var hotKeyID: UInt32?
+    var wheelHotKeyIDs: [UInt32] = []
+    var hotKeysSuspended = false
+    /// Display strings of shortcuts that couldn't be registered (already taken elsewhere).
+    var failedHotKeys: Set<String> = []
     var job: Task<Void, Never>?
     var lastResult: JobResult?
     var settingsWindow: SettingsWindowController?
@@ -85,15 +89,40 @@ final class AppController: NSObject, WheelDelegate, ChipDelegate, ShelfTrayDeleg
         registerHotKey()
     }
 
+    /// Registers the main shortcut and each wheel's own shortcut. A combination another app
+    /// already holds can't be registered; Settings shows that from `failedHotKeys`.
     func registerHotKey() {
         HotKeyCenter.shared.unregister(hotKeyID)
         hotKeyID = nil
+        wheelHotKeyIDs.forEach { HotKeyCenter.shared.unregister($0) }
+        wheelHotKeyIDs = []
+        failedHotKeys = []
+        guard !hotKeysSuspended else { return }
         let hk = store.settings.hotKey
         if let code = hk.keyCode {
             hotKeyID = HotKeyCenter.shared.register(keyCode: code, modifiers: hk.modifiers) { [weak self] in
                 self?.openWheelWithoutDrag(at: NSEvent.mouseLocation)
             }
+            if hotKeyID == nil { failedHotKeys.insert(hk.display); Log.error("couldn't register shortcut \(hk.display)") }
         }
+        for w in store.settings.wheels {
+            guard let code = w.hotKey.keyCode else { continue }
+            let id = w.id
+            if let r = HotKeyCenter.shared.register(keyCode: code, modifiers: w.hotKey.modifiers, handler: { [weak self] in
+                self?.openWheelWithoutDrag(at: NSEvent.mouseLocation, wheelID: id)
+            }) {
+                wheelHotKeyIDs.append(r)
+            } else {
+                failedHotKeys.insert(w.hotKey.display)
+                Log.error("couldn't register shortcut \(w.hotKey.display)")
+            }
+        }
+    }
+
+    /// While Settings records a new shortcut, ours are released so pressing them is recorded, not run.
+    func suspendHotKeys(_ suspend: Bool) {
+        hotKeysSuspended = suspend
+        registerHotKey()
     }
 
     // MARK: opening the wheel
@@ -120,7 +149,8 @@ final class AppController: NSObject, WheelDelegate, ChipDelegate, ShelfTrayDeleg
 
     /// Hot key, menu bar or ⌥ + shake (R2). Commands work on the shelf if it has
     /// anything, otherwise on the clipboard; leftover slots become handy folders.
-    func openWheelWithoutDrag(at p: NSPoint) {
+    /// - Parameter wheelID: open on this extra wheel instead of the main or front app's one.
+    func openWheelWithoutDrag(at p: NSPoint, wheelID: String? = nil) {
         if wheel.isVisible { closeWheel(); return }
         shelf.pruneMissing()
         let payload: DragPayload
@@ -147,7 +177,11 @@ final class AppController: NSObject, WheelDelegate, ChipDelegate, ShelfTrayDeleg
             + extra.map { WheelPage(name: $0.name, slots: $0.slots) }
             + appWheels.map { WheelPage(name: $0.value.name, slots: $0.value.slots) }
             + [WheelPage(name: L("Running apps"), slots: nil)]
-        pageIndex = appWheels.firstIndex { $0.key == front }.map { $0 + 1 + extra.count } ?? 0
+        if let wheelID, let i = extra.firstIndex(where: { $0.id == wheelID }) {
+            pageIndex = i + 1
+        } else {
+            pageIndex = appWheels.firstIndex { $0.key == front }.map { $0 + 1 + extra.count } ?? 0
+        }
         let slots = layoutPage(pageIndex)
         chip.close()
         wheel.show(at: p, slots: slots, summary: summary, mode: .click, shelfCount: shelf.items.count, page: pageLabel)

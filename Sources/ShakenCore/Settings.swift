@@ -52,9 +52,20 @@ public struct NamedWheel: Codable, Equatable, Identifiable, Sendable {
     public var id: String
     public var name: String
     public var slots: [Slot]
+    /// Opens the wheel straight on this one.
+    public var hotKey: HotKeySetting = .none
     public init(id: String = UUID().uuidString, name: String,
-                slots: [Slot] = (0..<ShakenSettings.slotCount).map { _ in Slot(kind: .empty) }) {
-        self.id = id; self.name = name; self.slots = slots
+                slots: [Slot] = (0..<ShakenSettings.slotCount).map { _ in Slot(kind: .empty) }, hotKey: HotKeySetting = .none) {
+        self.id = id; self.name = name; self.slots = slots; self.hotKey = hotKey
+    }
+
+    enum CodingKeys: String, CodingKey { case id, name, slots, hotKey }
+    public init(from d: Decoder) throws {
+        let c = try d.container(keyedBy: CodingKeys.self)
+        id = try c.decode(String.self, forKey: .id)
+        name = try c.decode(String.self, forKey: .name)
+        slots = try c.decode([Slot].self, forKey: .slots)
+        hotKey = try c.decodeIfPresent(HotKeySetting.self, forKey: .hotKey) ?? .none
     }
 }
 
@@ -115,6 +126,41 @@ public struct HotKeySetting: Codable, Equatable, Sendable {
         HotKeySetting(keyCode: 1, modifiers: 0x0100 | 0x0800, display: "⌥⌘S"),
         HotKeySetting(keyCode: nil, modifiers: 0, display: "—"),
     ]
+
+    public static let none = HotKeySetting(keyCode: nil, modifiers: 0, display: "—")
+    public var isSet: Bool { keyCode != nil }
+
+    // Carbon modifier bits.
+    public static let cmd: UInt32 = 0x0100, shift: UInt32 = 0x0200, option: UInt32 = 0x0800, control: UInt32 = 0x1000
+
+    /// Builds a shortcut from a key press, or explains why it can't be used.
+    /// A shortcut needs ⌘, ⌥ or ⌃, except the F-keys, so ordinary typing is never taken over.
+    public static func make(keyCode: UInt32, modifiers: UInt32) -> Result<HotKeySetting, ShakenError> {
+        let mods = modifiers & (cmd | shift | option | control)
+        let name = keyName(keyCode)
+        let isFKey = name.hasPrefix("F") && Int(name.dropFirst()) != nil
+        if mods & (cmd | option | control) == 0 && !isFKey {
+            return .failure(.other(L("Add ⌘, ⌥ or ⌃, so the shortcut doesn't take over ordinary typing")))
+        }
+        if name == "?" { return .failure(.other(L("That key can't be used for a shortcut"))) }
+        var d = ""
+        if mods & control != 0 { d += "⌃" }
+        if mods & option != 0 { d += "⌥" }
+        if mods & shift != 0 { d += "⇧" }
+        if mods & cmd != 0 { d += "⌘" }
+        return .success(HotKeySetting(keyCode: keyCode, modifiers: mods, display: d + name))
+    }
+
+    /// A readable name for a key code on the ANSI layout ("K", "Space", "F5", "←").
+    public static func keyName(_ code: UInt32) -> String {
+        let named: [UInt32: String] = [49: "Space", 36: "↩", 48: "⇥", 51: "⌫", 117: "⌦", 53: "⎋", 123: "←", 124: "→", 125: "↓", 126: "↑",
+                                       115: "Home", 119: "End", 116: "Page Up", 121: "Page Down", 76: "Enter"]
+        if let n = named[code] { return n }
+        let fkeys: [UInt32] = [122, 120, 99, 118, 96, 97, 98, 100, 101, 109, 103, 111, 105, 107, 113, 106, 64, 79, 80, 90]
+        if let i = fkeys.firstIndex(of: code) { return "F\(i + 1)" }
+        if let k = KeyCombo.keys.first(where: { UInt32($0.value) == code && $0.key.count == 1 })?.key { return k.uppercased() }
+        return "?"
+    }
 }
 
 public struct KindPreference: Codable, Equatable, Sendable {
@@ -206,6 +252,11 @@ public struct ShakenSettings: Codable, Equatable, Sendable {
             if x.name.isEmpty { x.name = L("Wheel %@", String(i + 2)) }
             x.slots = fixWheel(x.slots)
             return x
+        }
+        var taken: Set<String> = s.hotKey.isSet ? ["\(s.hotKey.keyCode!)-\(s.hotKey.modifiers)"] : []
+        for i in s.wheels.indices where s.wheels[i].hotKey.isSet {
+            let k = "\(s.wheels[i].hotKey.keyCode!)-\(s.wheels[i].hotKey.modifiers)"
+            if !taken.insert(k).inserted { s.wheels[i].hotKey = .none }
         }
         return s.finishValidation()
     }

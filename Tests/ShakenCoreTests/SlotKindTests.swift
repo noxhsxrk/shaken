@@ -190,3 +190,27 @@ import Testing
         #expect(UpdateCheck.parse(Data(#"{"tag_name":"v9","prerelease":true}"#.utf8)) == nil)
     }
 }
+
+@Suite struct HotKeyTests {
+    @Test func buildsFromKeyPress() throws {
+        let hk = try HotKeySetting.make(keyCode: 40, modifiers: HotKeySetting.cmd | HotKeySetting.shift).get()
+        #expect(hk.display == "⇧⌘K")
+        #expect(try HotKeySetting.make(keyCode: 49, modifiers: HotKeySetting.control | HotKeySetting.option).get() == .default)
+        #expect(try HotKeySetting.make(keyCode: 96, modifiers: 0).get().display == "F5")
+    }
+
+    @Test func refusesPlainTyping() {
+        #expect(throws: ShakenError.self) { try HotKeySetting.make(keyCode: 40, modifiers: 0).get() }
+        #expect(throws: ShakenError.self) { try HotKeySetting.make(keyCode: 40, modifiers: HotKeySetting.shift).get() }
+    }
+
+    @Test func wheelShortcutsCantRepeat() throws {
+        var s = ShakenSettings()
+        let k = try HotKeySetting.make(keyCode: 18, modifiers: HotKeySetting.control | HotKeySetting.option).get()
+        s.wheels = [NamedWheel(name: "A", hotKey: k), NamedWheel(name: "B", hotKey: k), NamedWheel(name: "C", hotKey: .default)]
+        let v = s.validated()
+        #expect(v.wheels[0].hotKey == k)
+        #expect(!v.wheels[1].hotKey.isSet)
+        #expect(!v.wheels[2].hotKey.isSet)   // same as the main shortcut
+    }
+}
