@@ -2,6 +2,14 @@
 
 All notable changes to Shaken. Versions follow [Semantic Versioning](https://semver.org).
 
+## 0.1.1 - 2026-11-06
+
+### Changed
+- Settings and the welcome window are now made of the same glass as the wheel: they sit on the blurred desktop with a wash of your glass color. Settings has a sidebar (⌘1–⌘6 jump to each pane) and a title on each pane in place of tabs.
+
+### Fixed
+- A faint square no longer shows around the wheel: the blur and shadow behind it are now round.
+
 ## 0.1.0 - 2026-11-06
 
 First release.
