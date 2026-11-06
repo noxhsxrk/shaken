@@ -296,6 +296,14 @@ struct WheelTab: View {
     @EnvironmentObject var model: SettingsModel
     @State private var selected: String?
     @State private var selectedChild: String?
+    @State private var confirmingRemove = false
+
+    /// The name of the wheel being edited, for the remove confirmation.
+    var editingName: String {
+        if let i = model.editingNamedIndex, model.settings.wheels.indices.contains(i) { return model.settings.wheels[i].name }
+        if let id = model.editingAppID { return model.settings.appWheels[id]?.name ?? "" }
+        return ""
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -323,7 +331,12 @@ struct WheelTab: View {
                 }
                 .frame(width: 110)
                 if model.wheelScope != nil {
-                    Button(L("Remove"), role: .destructive) { model.removeWheel() }
+                    Button(L("Remove…"), role: .destructive) { confirmingRemove = true }
+                        .confirmationDialog(L("Remove the wheel “%@”?", editingName), isPresented: $confirmingRemove) {
+                            Button(L("Remove Wheel"), role: .destructive) { model.removeWheel() }
+                        } message: {
+                            Text(L("Its slots are deleted. You can't undo this, but you can export it first from Share."))
+                        }
                 }
                 Spacer()
                 Menu(L("Share")) {
@@ -586,6 +599,15 @@ struct SlotIcon: View {
     }
 }
 
+/// A field's hint text: wraps inside the slot editor instead of widening it past the window.
+struct Hint: ViewModifier {
+    func body(content: Content) -> some View {
+        content.font(.caption).foregroundStyle(.secondary)
+            .frame(maxWidth: 300, alignment: .leading)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+}
+
 struct SlotFields: View {
     @Binding var slot: Slot
     let actions: [ActionManifest]
@@ -599,7 +621,7 @@ struct SlotFields: View {
             }
             if slot.kind == .auto {
                 Text(L("Filled with a command that fits what you're dragging. Choose which one in the Commands tab, or right-click the slot on the wheel."))
-                    .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                    .modifier(Hint()).fixedSize(horizontal: false, vertical: true)
             }
             if slot.kind != .auto && slot.kind != .empty {
                 TextField(L("Name"), text: $slot.title, prompt: Text(L("Automatic")))
@@ -615,10 +637,10 @@ struct SlotFields: View {
                     Spacer()
                     Button(L("Choose App…")) { if let u = choose(.app) { slot.target = u.path } }
                 }
-                Text(L("Dropped files or links open in this app.")).font(.caption).foregroundStyle(.secondary)
+                Text(L("Dropped files or links open in this app.")).modifier(Hint())
             case .web:
                 TextField(L("Address"), text: $slot.target, prompt: Text("https://www.google.com/search?q={query}"))
-                Text(L("{query} is replaced with the dragged text or link.")).font(.caption).foregroundStyle(.secondary)
+                Text(L("{query} is replaced with the dragged text or link.")).modifier(Hint())
             case .folder:
                 HStack {
                     Text(slot.target.isEmpty ? L("No folder chosen") : slot.target).lineLimit(1).truncationMode(.middle)
@@ -626,7 +648,7 @@ struct SlotFields: View {
                     Button(L("Choose Folder…")) { if let u = choose(.folder) { slot.target = u.path } }
                 }
                 Text(L("Dropped files are copied here (undoable)."))
-                    .font(.caption).foregroundStyle(.secondary)
+                    .modifier(Hint())
             case .file:
                 HStack {
                     Text(slot.target.isEmpty ? L("No file chosen") : slot.target).lineLimit(1).truncationMode(.middle)
@@ -649,21 +671,21 @@ struct SlotFields: View {
                 }
                 .task { shortcutNames = await Shortcuts.list() }
                 Text(L("Runs from the Shortcuts app. Things you drag onto it become its input."))
-                    .font(.caption).foregroundStyle(.secondary)
+                    .modifier(Hint())
             case .snippet:
                 TextEditor(text: $slot.target)
                     .font(.body)
                     .frame(minHeight: 70)
                     .overlay(RoundedRectangle(cornerRadius: 5).stroke(.quaternary))
                 Text(L("Pasted where you're typing. Needs Accessibility permission the first time."))
-                    .font(.caption).foregroundStyle(.secondary)
+                    .modifier(Hint())
             case .keys:
                 HStack {
                     TextField(L("Keys"), text: $slot.target, prompt: Text("cmd+shift+4"))
                     Text(KeyCombo(slot.target)?.display ?? "—").font(.system(.body, design: .rounded)).frame(minWidth: 60)
                 }
                 Text(L("Pressed in the app in front, e.g. cmd+shift+4, ctrl+opt+t, f5. Needs Accessibility permission the first time."))
-                    .font(.caption).foregroundStyle(.secondary)
+                    .modifier(Hint())
             case .shell, .applescript:
                 TextEditor(text: $slot.target)
                     .font(.system(.body, design: .monospaced))
@@ -672,7 +694,7 @@ struct SlotFields: View {
                 Text(slot.kind == .shell
                      ? L("Runs with zsh in your home folder. Dragged files are $1, $2…; dragged text is in $SHAKEN_TEXT.")
                      : L("Dragged files are passed to on run argv."))
-                    .font(.caption).foregroundStyle(.secondary)
+                    .modifier(Hint())
             case .system:
                 Picker(L("Does"), selection: $slot.target) {
                     Text(L("Choose…")).tag("")
@@ -682,16 +704,16 @@ struct SlotFields: View {
                 }
                 if SystemControl(rawValue: slot.target)?.needsAccessibility == true {
                     Text(L("Sent as a key press, so it needs Accessibility permission the first time."))
-                        .font(.caption).foregroundStyle(.secondary)
+                        .modifier(Hint())
                 }
             case .delay:
                 TextField(L("Seconds"), text: $slot.target, prompt: Text("0.5"))
             case .workflow:
                 Text(L("Runs each step below in order: open apps, links and files, run Shortcuts and scripts, paste text, press keys."))
-                    .font(.caption).foregroundStyle(.secondary)
+                    .modifier(Hint())
             case .switcher:
                 Text(L("Opens a ring of your recently used apps. Drop files on one to open them in it."))
-                    .font(.caption).foregroundStyle(.secondary)
+                    .modifier(Hint())
             default:
                 EmptyView()
             }
@@ -749,9 +771,7 @@ struct WheelPreview: View {
         ZStack {
             ForEach(Array(slots.enumerated()), id: \.element.id) { i, s in
                 let isSel = selected == s.id
-                let tile = WheelTileShape(index: i)
-                    .fill(isSel ? Brand.accentColor : Color.primary.opacity(dropTarget == s.id ? 0.16 : 0.07))
-                    .overlay(WheelTileShape(index: i).stroke(Color.primary.opacity(0.12), lineWidth: 1))
+                let tile = GlassShape(shape: WheelTileShape(index: i), selected: isSel, highlighted: dropTarget == s.id)
                 if !interactive { tile } else {
                 tile
                     .contentShape(WheelTileShape(index: i))
@@ -776,12 +796,29 @@ struct WheelPreview: View {
                     .allowsHitTesting(false)
                     .accessibilityHidden(true)
             }
-            Circle().fill(Color.primary.opacity(0.07)).frame(width: size * 0.31, height: size * 0.31)
-                .overlay(Circle().stroke(Color.primary.opacity(0.12), lineWidth: 1))
+            GlassShape(shape: Circle(), selected: false).frame(width: size * 0.31, height: size * 0.31)
             Text(L("Slot 1 is at the top")).font(.system(size: 9)).foregroundStyle(.secondary)
                 .multilineTextAlignment(.center).frame(width: size * 0.26)
         }
         .frame(width: size, height: size)
+    }
+}
+
+/// A shape filled with the wheel's glass (the same colours as the real wheel), for Settings previews.
+struct GlassShape<S: Shape>: View {
+    let shape: S
+    var selected = false
+    var highlighted = false
+    @Environment(\.colorScheme) private var scheme
+
+    var body: some View {
+        let c = Brand.glassColors(dark: scheme == .dark, selected: selected)
+        shape
+            .fill(LinearGradient(colors: [Color(nsColor: c.top), Color(nsColor: c.bottom)], startPoint: .top, endPoint: .bottom))
+            .overlay(shape.fill(Color.primary.opacity(highlighted ? 0.12 : 0)))
+            // On the window background the glass's white edge disappears, so add a faint dark one.
+            .overlay(shape.stroke(Color.primary.opacity(selected ? 0 : 0.10), lineWidth: 1))
+            .overlay(shape.stroke(Color(nsColor: c.edge), lineWidth: selected ? 1 : 0.6))
     }
 }
 
@@ -1017,7 +1054,7 @@ struct GestureTab: View {
                                           set: { v in model.update { $0.gesture.sensitivity = Int(v.rounded()) } }),
                            in: 1...5, step: 1) {
                         Text(L("Sensitivity"))
-                    } minimumValueLabel: { Text(L("Firm")) } maximumValueLabel: { Text(L("Light")) }
+                    } minimumValueLabel: { Text(L("Firm")).foregroundStyle(.secondary) } maximumValueLabel: { Text(L("Light")).foregroundStyle(.secondary) }
                 }
                 Picker(L("Also hold"), selection: model.binding(\.gesture.modifier)) {
                     Text(L("Nothing")).tag(ModifierRequirement.none)
@@ -1127,16 +1164,15 @@ struct ActionsTab: View {
                 Spacer()
                 Button(L("Reset to Defaults")) { model.update { $0.kindPreferences[kind.rawValue] = nil } }
             }
-            Text(L("This is the wheel you get when you drag this kind of item. Click a slot, then pick the command it shows. Dragging two or more items at once uses Several items."))
-                .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-            Text(L("Tip: open the wheel with your shortcut and right-click a slot to change it right there."))
+            Text(L("The wheel you get when you drag this kind of item. Click a slot, then pick its command."))
                 .font(.caption).foregroundStyle(.secondary)
             Divider()
             HStack(alignment: .top, spacing: 24) {
                 VStack {
                     WheelPreview(slots: previewSlots, selected: $selected) { a, b in swapSlots(a, b) }
-                    Text(L("Drag one slot onto another to swap them."))
+                    Text(L("Drag one slot onto another to swap them. Two or more items at once use Several items. On the wheel itself, right-click a slot to change it."))
                         .font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.center).frame(width: 280)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 Divider()
                 detail.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -1269,6 +1305,7 @@ struct ActionsTab: View {
 struct PacksTab: View {
     @EnvironmentObject var model: SettingsModel
     @State private var url = ""
+    @State private var removing: PackManager.Pack?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -1281,6 +1318,16 @@ struct PacksTab: View {
             Text(L("Installing only downloads files. Each command shows you its scripts and asks before the first run, and again whenever a file changes."))
                 .font(.caption).foregroundStyle(.secondary)
             if let m = model.packMessage { Text(m).font(.callout).textSelection(.enabled) }
+            if model.packs.isEmpty {
+                VStack(spacing: 10) {
+                    Image(systemName: "shippingbox").font(.system(size: 34)).foregroundStyle(Brand.accentColor)
+                    Text(L("No command packs yet")).font(.headline)
+                    Text(L("A pack is a Git repository of commands someone shared. Paste its URL above to install it, or find packs in the Gallery tab."))
+                        .font(.callout).foregroundStyle(.secondary).multilineTextAlignment(.center).frame(maxWidth: 380)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
             List {
                 ForEach(model.packs) { pack in
                     Section {
@@ -1306,11 +1353,21 @@ struct PacksTab: View {
                             if let r = pack.remote { Text(r).font(.caption).foregroundStyle(.secondary).lineLimit(1) }
                             Spacer()
                             Button(L("Update")) { model.updatePack(pack) }.disabled(model.packBusy)
-                            Button(L("Remove"), role: .destructive) { model.removePack(pack) }
+                            Button(L("Remove…"), role: .destructive) { removing = pack }
                         }
                     }
                 }
             }
+            }
+        }
+        .confirmationDialog(L("Remove the pack “%@”?", removing?.name ?? ""),
+                            isPresented: Binding(get: { removing != nil }, set: { if !$0 { removing = nil } })) {
+            Button(L("Remove Pack"), role: .destructive) {
+                if let p = removing { model.removePack(p) }
+                removing = nil
+            }
+        } message: {
+            Text(L("Its commands are removed from your wheels. You can install it again from its URL."))
         }
     }
 }
@@ -1361,9 +1418,9 @@ struct GeneralTab: View {
                     Slider(value: model.binding(\.glassTintStrength), in: 0...1) {
                         EmptyView()
                     } minimumValueLabel: {
-                        Text(L("Grey")).font(.caption)
+                        Text(L("Grey")).font(.caption).foregroundStyle(.secondary)
                     } maximumValueLabel: {
-                        Text(L("Strong")).font(.caption)
+                        Text(L("Strong")).font(.caption).foregroundStyle(.secondary)
                     }
                 }
                 LabeledContent(L("Preview")) {

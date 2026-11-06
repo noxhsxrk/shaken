@@ -54,11 +54,11 @@ enum Brand {
 
     /// Draw over NSVisualEffectView, retaining the backdrop instead of painting it opaque.
     /// Snapshot callers get a deterministic gradient even without a WindowServer backdrop.
-    static func drawGlass(_ path: NSBezierPath, dark: Bool, selected: Bool = false) {
+    /// The glass colours: top and bottom of the gradient, and the hairline edge. Shared by the
+    /// wheel and the previews in Settings, so both look the same.
+    static func glassColors(dark: Bool, selected: Bool) -> (top: NSColor, bottom: NSColor, edge: NSColor) {
         let contrast = NSWorkspace.shared.accessibilityDisplayShouldIncreaseContrast
         let opaque = NSWorkspace.shared.accessibilityDisplayShouldReduceTransparency || contrast
-        NSGraphicsContext.saveGraphicsState()
-        path.addClip()
         let top: NSColor
         let bottom: NSColor
         let a = accent
@@ -77,6 +77,16 @@ enum Brand {
             top = mix(.white, pull * 0.25, alpha: opaque ? 1 : 0.64)
             bottom = mix(NSColor(srgbRed: 0.86, green: 0.87, blue: 0.89, alpha: 1), pull, alpha: opaque ? 1 : 0.62)
         }
+        let edge = contrast ? text(dark: dark) : NSColor.white.withAlphaComponent(selected ? 0.72 : (dark ? 0.30 : 0.68))
+        return (top, bottom, edge)
+    }
+
+    static func drawGlass(_ path: NSBezierPath, dark: Bool, selected: Bool = false) {
+        let contrast = NSWorkspace.shared.accessibilityDisplayShouldIncreaseContrast
+        let opaque = NSWorkspace.shared.accessibilityDisplayShouldReduceTransparency || contrast
+        NSGraphicsContext.saveGraphicsState()
+        path.addClip()
+        let (top, bottom, edge) = glassColors(dark: dark, selected: selected)
         NSGradient(starting: bottom, ending: top)?.draw(in: path, angle: 90)
         if !opaque {
             // Broad light falloff rather than a flat coloured tile.
@@ -85,7 +95,7 @@ enum Brand {
                 .draw(in: path, relativeCenterPosition: NSPoint(x: -0.6, y: 1))
         }
         path.lineWidth = contrast ? 1.4 : (selected ? 1.15 : 0.8)
-        (contrast ? text(dark: dark) : NSColor.white.withAlphaComponent(selected ? 0.72 : (dark ? 0.30 : 0.68))).setStroke()
+        edge.setStroke()
         path.stroke()
         NSGraphicsContext.restoreGraphicsState()
     }
