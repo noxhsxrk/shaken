@@ -1044,9 +1044,7 @@ struct GestureTab: View {
                     if on { WindowPreviewController.requestPermission() }
                 }))
                 .disabled(!WindowPreviewController.isAvailable)
-                Text(WindowPreviewController.isAvailable
-                     ? L("Shows a picture of the app's window while you point at it in the switcher. macOS asks for Screen Recording permission; Shaken only captures that one window, only while the switcher is open, and never saves it.")
-                     : L("Window previews need macOS 14 or later."))
+                Text(L("Shows a picture of the app's window while you point at it in the switcher. macOS asks for Screen Recording permission; Shaken only captures that one window, only while the switcher is open, and never saves it."))
                     .font(.caption).foregroundStyle(.secondary)
             }
             Section(L("Ignore shakes in these apps")) {

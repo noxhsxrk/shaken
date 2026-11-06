@@ -39,7 +39,8 @@ final class WindowPreviewController {
         panel.contentView = effect
     }
 
-    static var isAvailable: Bool { if #available(macOS 14.0, *) { return true } else { return false } }
+    /// macOS 14+ uses ScreenCaptureKit; macOS 13 falls back to CoreGraphics window capture.
+    static var isAvailable: Bool { true }
     static var hasPermission: Bool { CGPreflightScreenCaptureAccess() }
     /// Shows the system prompt (once) and returns whether access is already granted.
     @discardableResult static func requestPermission() -> Bool { CGRequestScreenCaptureAccess() }
@@ -53,7 +54,9 @@ final class WindowPreviewController {
         let name = app.localizedName ?? ""
         if let (img, at) = cache[pid], Date().timeIntervalSince(at) < 3 { return present(img, name, beside: wheel) }
         task = Task { @MainActor [weak self] in
-            guard #available(macOS 14.0, *), let img = await Self.capture(pid: pid), !Task.isCancelled else { self?.hide(); return }
+            let img: NSImage?
+            if #available(macOS 14.0, *) { img = await Self.capture(pid: pid) } else { img = Self.legacyCapture(pid: pid) }
+            guard let img, !Task.isCancelled else { self?.hide(); return }
             self?.cache[pid] = (img, Date())
             self?.present(img, name, beside: wheel)
         }
@@ -78,6 +81,28 @@ final class WindowPreviewController {
         }
         panel.setFrame(NSRect(origin: origin, size: size), display: true)
         if !panel.isVisible { Motion.fadeIn(panel) }
+    }
+
+    /// macOS 13: the app's largest normal window through CGWindowList.
+    private static func legacyCapture(pid: pid_t) -> NSImage? {
+        guard let list = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]] else { return nil }
+        let windows = list.filter {
+            ($0[kCGWindowOwnerPID as String] as? pid_t) == pid && ($0[kCGWindowLayer as String] as? Int) == 0
+        }
+        func area(_ w: [String: Any]) -> CGFloat {
+            guard let b = w[kCGWindowBounds as String] as? [String: CGFloat] else { return 0 }
+            return (b["Width"] ?? 0) * (b["Height"] ?? 0)
+        }
+        guard let w = windows.max(by: { area($0) < area($1) }), area(w) > 80 * 60,
+              let id = w[kCGWindowNumber as String] as? CGWindowID,
+              let cg = legacyWindowImage(id) else { return nil }
+        return NSImage(cgImage: cg, size: NSSize(width: cg.width, height: cg.height))
+    }
+
+    /// Wrapped so the deprecation warning stays in one place; only called before macOS 14.
+    @available(macOS, deprecated: 14.0)
+    private static func legacyWindowImage(_ id: CGWindowID) -> CGImage? {
+        CGWindowListCreateImage(.null, .optionIncludingWindow, id, [.boundsIgnoreFraming, .nominalResolution])
     }
 
     /// The app's largest normal on-screen window.
