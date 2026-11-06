@@ -172,12 +172,21 @@ When something fails, the chip says what went wrong in plain words and stays unt
 
 ## Install
 
-Download the latest DMG from [shaken.noxhsxrk.com/download](https://shaken.noxhsxrk.com/download), drag Shaken to Applications and open it. The Shaken icon appears in
-the menu bar. There is no Dock icon. Opening Shaken again shows Settings.
+With [Homebrew](https://brew.sh):
 
-The current builds aren't notarized by Apple yet, so the first time macOS says it can't check
-Shaken for malware. Open *System Settings → Privacy & Security* and choose **Open Anyway**, or
-run `xattr -dr com.apple.quarantine /Applications/Shaken.app` once.
+```sh
+brew install --cask noxhsxrk/nox/shaken
+```
+
+Or download the latest DMG from [shaken.noxhsxrk.com/download](https://shaken.noxhsxrk.com/download),
+drag Shaken to Applications and open it. The Shaken icon appears in the menu bar. There is no
+Dock icon. Opening Shaken again shows Settings. Later versions install themselves from
+*Help › Check for Updates*.
+
+The current builds aren't notarized by Apple yet. Installed with Homebrew, Shaken opens straight
+away. From the DMG, the first time macOS says it can't check Shaken for malware: open
+*System Settings → Privacy & Security* and choose **Open Anyway**, or run
+`xattr -dr com.apple.quarantine /Applications/Shaken.app` once.
 
 To build from source you need Xcode installed, but you never have to open it:
 
