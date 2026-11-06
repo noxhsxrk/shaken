@@ -2,6 +2,23 @@
 
 All notable changes to Shaken. Versions follow [Semantic Versioning](https://semver.org).
 
+## 0.4.0 - 2026-11-06
+
+### Added
+- **Pick commands on the wheel.** *Settings → Commands* now shows the wheel itself: click a slot, then the command it shows. Picking one that's on another slot swaps the two, and nothing else moves.
+- **Right-click a slot** on the wheel (opened with your shortcut, the menu bar or the shelf) to change its command right there.
+- **Glass color** in *Settings → General*: your Mac's accent color (the default), Shaken blue or any color, with a tint slider and a preview. Text on the selected slot turns dark on light accents.
+
+### Changed
+- Switching wheels turns the whole wheel, glass and gaps included, not just what's drawn on it.
+- JPGs share the commands list with other images. A JPG order you set before moves over.
+- *Running apps* and the app switcher put apps you used before Shaken started in order too, by how close to the front their windows are.
+- The Commands tab opens on the kind of item you dragged last.
+
+### Fixed
+- Long command names on the wheel wrap to two lines instead of being cut off next to the slot number.
+- Commands with Shaken's own icons showed no icon in the Commands list.
+
 ## 0.3.1 - 2026-11-06
 
 ### Changed

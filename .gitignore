@@ -4,3 +4,4 @@ build/
 .DS_Store
 .swiftpm/
 scripts/make-dmg.sh
+graphify-out/
