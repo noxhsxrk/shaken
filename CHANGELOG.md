@@ -2,7 +2,7 @@
 
 All notable changes to Shaken. Versions follow [Semantic Versioning](https://semver.org).
 
-## Unreleased
+## 0.2.0 - 2026-11-06
 
 ### Added
 - New look from the Shaken asset kit: app icon, menu bar icon, 16 command glyphs, and a periwinkle and navy palette across the wheel, chip, shelf tray, Settings and welcome window. The wheel follows the kit's geometry.
