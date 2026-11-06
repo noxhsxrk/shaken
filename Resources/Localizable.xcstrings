@@ -1,0 +1,1816 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "%@ files": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ ไฟล์"
+          }
+        }
+      }
+    },
+    "%@ items": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ รายการ"
+          }
+        }
+      }
+    },
+    "(binary file, %@ — not shown)": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "(ไฟล์ไบนารี %@ — ไม่แสดง)"
+          }
+        }
+      }
+    },
+    "(large file, %@ — not shown)": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "(ไฟล์ใหญ่ %@ — ไม่แสดง)"
+          }
+        }
+      }
+    },
+    "1 item": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 รายการ"
+          }
+        }
+      }
+    },
+    "A bare shake never opens it, because macOS uses that to enlarge the pointer.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "สะบัดเปล่า ๆ จะไม่เปิดวง เพราะ macOS ใช้ท่านี้ขยายเคอร์เซอร์ให้หาเจอ"
+          }
+        }
+      }
+    },
+    "A pack named “%@” is already installed": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ติดตั้งชุดคำสั่งชื่อ “%@” ไว้แล้ว"
+          }
+        }
+      }
+    },
+    "Action not found": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ไม่พบคำสั่ง"
+          }
+        }
+      }
+    },
+    "Add App…": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เพิ่มแอป…"
+          }
+        }
+      }
+    },
+    "Add item": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เพิ่มรายการ"
+          }
+        }
+      }
+    },
+    "Address": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ที่อยู่เว็บ"
+          }
+        }
+      }
+    },
+    "Allow": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "อนุญาต"
+          }
+        }
+      }
+    },
+    "Allow and Run": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "อนุญาตและรัน"
+          }
+        }
+      }
+    },
+    "Allow “%@” to run?": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "อนุญาตให้ “%@” รันไหม"
+          }
+        }
+      }
+    },
+    "Allowed": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "อนุญาตแล้ว"
+          }
+        }
+      }
+    },
+    "Already smaller than %@": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ไฟล์เล็กกว่า %@ อยู่แล้ว"
+          }
+        }
+      }
+    },
+    "Also hold": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "กดปุ่มร่วม"
+          }
+        }
+      }
+    },
+    "App": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "แอป"
+          }
+        }
+      }
+    },
+    "App “%@” isn't installed": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ไม่ได้ติดตั้งแอป “%@”"
+          }
+        }
+      }
+    },
+    "Archive": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Archive"
+          }
+        }
+      }
+    },
+    "Automatic": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "อัตโนมัติ"
+          }
+        }
+      }
+    },
+    "Back": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "กลับ"
+          }
+        }
+      }
+    },
+    "Built in": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ในตัว"
+          }
+        }
+      }
+    },
+    "Can't read PDF “%@”.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "อ่าน PDF “%@” ไม่ได้"
+          }
+        }
+      }
+    },
+    "Can't read image “%@”. The file may be damaged.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "อ่านรูป “%@” ไม่ได้ ไฟล์อาจเสีย"
+          }
+        }
+      }
+    },
+    "Can't write %@": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เขียน %@ ไม่ได้"
+          }
+        }
+      }
+    },
+    "Can't write to folder “%@”. Originals are untouched.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เขียนลงโฟลเดอร์ “%@” ไม่ได้ ต้นฉบับยังอยู่ครบ"
+          }
+        }
+      }
+    },
+    "Can't write “%@”": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เขียน “%@” ไม่ได้"
+          }
+        }
+      }
+    },
+    "Cancel": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ยกเลิก"
+          }
+        }
+      }
+    },
+    "Cancelled": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ยกเลิกแล้ว"
+          }
+        }
+      }
+    },
+    "Choose App…": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เลือกแอป…"
+          }
+        }
+      }
+    },
+    "Choose Folder…": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เลือกโฟลเดอร์…"
+          }
+        }
+      }
+    },
+    "Choose…": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เลือก…"
+          }
+        }
+      }
+    },
+    "Clipboard: %@": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "คลิปบอร์ด: %@"
+          }
+        }
+      }
+    },
+    "Close (Esc)": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ปิด (Esc)"
+          }
+        }
+      }
+    },
+    "Command": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "คำสั่ง"
+          }
+        }
+      }
+    },
+    "Commands": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "คำสั่ง"
+          }
+        }
+      }
+    },
+    "Compress to ZIP": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "บีบอัด ZIP"
+          }
+        }
+      }
+    },
+    "Convert to JPG": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "แปลงเป็น JPG"
+          }
+        }
+      }
+    },
+    "Copied": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "คัดลอกแล้ว"
+          }
+        }
+      }
+    },
+    "Copy link": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "คัดลอกลิงก์"
+          }
+        }
+      }
+    },
+    "Copy name": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "คัดลอกชื่อ"
+          }
+        }
+      }
+    },
+    "Copy text": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "คัดลอกข้อความ"
+          }
+        }
+      }
+    },
+    "Copy to %@": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "คัดลอกไป %@"
+          }
+        }
+      }
+    },
+    "Couldn't get “%@” under the size limit": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ย่อ “%@” ให้ต่ำกว่าขนาดที่ตั้งไว้ไม่ได้"
+          }
+        }
+      }
+    },
+    "Couldn't start %@: %@": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เริ่ม %@ ไม่ได้: %@"
+          }
+        }
+      }
+    },
+    "Didn't work": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ไม่สำเร็จ"
+          }
+        }
+      }
+    },
+    "Done": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เสร็จแล้ว"
+          }
+        }
+      }
+    },
+    "Drag one slot onto another to swap them. Positions stay fixed so your hand can learn them.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ลากช่องหนึ่งไปวางบนอีกช่องเพื่อสลับ ตำแหน่งคงที่เพื่อให้มือจำได้"
+          }
+        }
+      }
+    },
+    "Dragged item": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ของที่ลาก"
+          }
+        }
+      }
+    },
+    "Dropped files are copied here (undoable).": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ไฟล์ที่ปล่อยจะถูกคัดลอกมาที่นี่ (ย้อนได้)"
+          }
+        }
+      }
+    },
+    "Dropped files or links open in this app.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ไฟล์หรือลิงก์ที่ปล่อยจะเปิดในแอปนี้"
+          }
+        }
+      }
+    },
+    "Duplicate action id “%@”": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ID คำสั่ง “%@” ซ้ำ"
+          }
+        }
+      }
+    },
+    "Empty": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ว่าง"
+          }
+        }
+      }
+    },
+    "Enter a Git URL starting with https:// or git@": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ใส่ URL ของ Git ที่ขึ้นต้นด้วย https:// หรือ git@"
+          }
+        }
+      }
+    },
+    "Filled with a command that fits what you're dragging.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เติมคำสั่งที่เข้ากับของที่กำลังลาก"
+          }
+        }
+      }
+    },
+    "Firm": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "หนัก"
+          }
+        }
+      }
+    },
+    "Folder": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "โฟลเดอร์"
+          }
+        }
+      }
+    },
+    "Follows your macOS language (English, ไทย)": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ตามภาษาของ macOS (English, ไทย)"
+          }
+        }
+      }
+    },
+    "General": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ทั่วไป"
+          }
+        }
+      }
+    },
+    "Gesture": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ท่าทาง"
+          }
+        }
+      }
+    },
+    "Git URL": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "URL ของ Git"
+          }
+        }
+      }
+    },
+    "Git failed: %@": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Git ผิดพลาด: %@"
+          }
+        }
+      }
+    },
+    "Icon (SF Symbol)": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ไอคอน (SF Symbol)"
+          }
+        }
+      }
+    },
+    "If any of these files change later, Shaken will ask again.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ถ้าไฟล์ใดเปลี่ยนภายหลัง Shaken จะขออนุญาตใหม่"
+          }
+        }
+      }
+    },
+    "If the wheel opens by mistake, just move out of it: it closes at once and your drag carries on.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ถ้าวงเปิดพลาด แค่เลื่อนออกนอกวง วงจะปิดทันทีและลากต่อได้ตามปกติ"
+          }
+        }
+      }
+    },
+    "Ignore shakes in these apps": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ไม่สนใจการสะบัดในแอปเหล่านี้"
+          }
+        }
+      }
+    },
+    "Image": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "รูป"
+          }
+        }
+      }
+    },
+    "Image (HEIC, PNG…)": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "รูป (HEIC, PNG…)"
+          }
+        }
+      }
+    },
+    "Install": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ติดตั้ง"
+          }
+        }
+      }
+    },
+    "Install: %@": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ติดตั้ง: %@"
+          }
+        }
+      }
+    },
+    "Installed “%@”. Nothing has run yet — each command asks before its first run.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ติดตั้ง “%@” แล้ว ยังไม่มีอะไรรัน — ทุกคำสั่งจะขออนุญาตก่อนรันครั้งแรก"
+          }
+        }
+      }
+    },
+    "Installing only downloads files. Each command shows you its scripts and asks before the first run, and again whenever a file changes.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "การติดตั้งแค่ดึงไฟล์ ทุกคำสั่งจะแสดงสคริปต์และขออนุญาตก่อนรันครั้งแรก และขอใหม่ทุกครั้งที่ไฟล์เปลี่ยน"
+          }
+        }
+      }
+    },
+    "Invalid web address": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ที่อยู่เว็บไม่ถูกต้อง"
+          }
+        }
+      }
+    },
+    "JPG": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "JPG"
+          }
+        }
+      }
+    },
+    "Keyboard shortcut": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "คีย์ลัด"
+          }
+        }
+      }
+    },
+    "Language": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ภาษา"
+          }
+        }
+      }
+    },
+    "License": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "สัญญาอนุญาต"
+          }
+        }
+      }
+    },
+    "Light": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เบา"
+          }
+        }
+      }
+    },
+    "Link": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ลิงก์"
+          }
+        }
+      }
+    },
+    "Make PDF": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ทำเป็น PDF"
+          }
+        }
+      }
+    },
+    "Make QR code": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "สร้าง QR เป็น PNG"
+          }
+        }
+      }
+    },
+    "Merge into PDF": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "รวมเป็น PDF"
+          }
+        }
+      }
+    },
+    "Merged": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "รวม"
+          }
+        }
+      }
+    },
+    "Moved to Trash": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ย้ายลงถังขยะแล้ว"
+          }
+        }
+      }
+    },
+    "Name": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ชื่อ"
+          }
+        }
+      }
+    },
+    "Needs “%@”. Install with: %@": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ต้องใช้ “%@” ติดตั้งด้วย: %@"
+          }
+        }
+      }
+    },
+    "No app chosen": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ยังไม่ได้เลือกแอป"
+          }
+        }
+      }
+    },
+    "No folder chosen": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ยังไม่ได้เลือกโฟลเดอร์"
+          }
+        }
+      }
+    },
+    "No free name for “%@”": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "หาชื่อว่างให้ “%@” ไม่ได้"
+          }
+        }
+      }
+    },
+    "None": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ไม่มี"
+          }
+        }
+      }
+    },
+    "Normal drags · mouse": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ลากปกติ · เมาส์"
+          }
+        }
+      }
+    },
+    "Normal drags · trackpad": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ลากปกติ · แทร็กแพด"
+          }
+        }
+      }
+    },
+    "Not a link": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ไม่ใช่ลิงก์"
+          }
+        }
+      }
+    },
+    "Not allowed yet": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ยังไม่อนุญาต"
+          }
+        }
+      }
+    },
+    "Nothing": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ไม่ต้องกด"
+          }
+        }
+      }
+    },
+    "Nothing dragged": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ไม่ได้ลากอะไร"
+          }
+        }
+      }
+    },
+    "Nothing was received": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ไม่ได้รับไฟล์"
+          }
+        }
+      }
+    },
+    "Off": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ปิด"
+          }
+        }
+      }
+    },
+    "Only files can be copied to a folder": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "คัดลอกลงโฟลเดอร์ได้เฉพาะไฟล์"
+          }
+        }
+      }
+    },
+    "Open Actions Folder": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เปิดโฟลเดอร์คำสั่ง"
+          }
+        }
+      }
+    },
+    "Open Commands Folder": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เปิดโฟลเดอร์คำสั่ง"
+          }
+        }
+      }
+    },
+    "Open Wheel": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เปิดวง"
+          }
+        }
+      }
+    },
+    "Open at login": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เปิดเมื่อล็อกอิน"
+          }
+        }
+      }
+    },
+    "Open in Preview": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เปิดใน Preview"
+          }
+        }
+      }
+    },
+    "Open link": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เปิดลิงก์"
+          }
+        }
+      }
+    },
+    "Other file": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ไฟล์อื่น"
+          }
+        }
+      }
+    },
+    "PDF": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PDF"
+          }
+        }
+      }
+    },
+    "Pack: %@": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ชุดคำสั่ง: %@"
+          }
+        }
+      }
+    },
+    "Packs": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ชุดคำสั่ง"
+          }
+        }
+      }
+    },
+    "Pause Shake Detection": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "หยุดจับการสะบัดชั่วคราว"
+          }
+        }
+      }
+    },
+    "Pick a slot to change it.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เลือกช่องที่ต้องการแก้"
+          }
+        }
+      }
+    },
+    "Quit Shaken": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ออกจาก Shaken"
+          }
+        }
+      }
+    },
+    "Record Gesture Traces": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "บันทึก trace ท่าทาง"
+          }
+        }
+      }
+    },
+    "Reload": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "โหลดใหม่"
+          }
+        }
+      }
+    },
+    "Remove": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ลบ"
+          }
+        }
+      }
+    },
+    "Remove metadata": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ลบ metadata"
+          }
+        }
+      }
+    },
+    "Removed “%@”.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ลบ “%@” แล้ว"
+          }
+        }
+      }
+    },
+    "Reset Order": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "คืนลำดับเดิม"
+          }
+        }
+      }
+    },
+    "Reset to Suggestions": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "คืนเป็นคำแนะนำ"
+          }
+        }
+      }
+    },
+    "Review…": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ตรวจดู…"
+          }
+        }
+      }
+    },
+    "Save as .txt": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "บันทึกเป็น .txt"
+          }
+        }
+      }
+    },
+    "Script “%@” not found": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ไม่พบสคริปต์ “%@”"
+          }
+        }
+      }
+    },
+    "Sensitivity": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ความไว"
+          }
+        }
+      }
+    },
+    "Settings…": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ตั้งค่า…"
+          }
+        }
+      }
+    },
+    "Several items": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "หลายรายการ"
+          }
+        }
+      }
+    },
+    "Shake while dragging": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "สะบัดระหว่างลาก"
+          }
+        }
+      }
+    },
+    "Shaken": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Shaken"
+          }
+        }
+      }
+    },
+    "Shaken Settings": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ตั้งค่า Shaken"
+          }
+        }
+      }
+    },
+    "Shaken can only move and undo files the script writes into $SHAKEN_OUTPUT. If it changes other files itself, Shaken can't undo that.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Shaken ย้ายและย้อนได้เฉพาะไฟล์ที่สคริปต์เขียนลง $SHAKEN_OUTPUT ถ้าสคริปต์แก้ไฟล์อื่นเอง Shaken ย้อนให้ไม่ได้"
+          }
+        }
+      }
+    },
+    "Shaken can't read what was dropped": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Shaken อ่านของที่ปล่อยไม่ได้"
+          }
+        }
+      }
+    },
+    "Shaken needs no special permissions. It watches the mouse with a standard monitor and only reads what you drag after you shake.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Shaken ไม่ขอสิทธิ์พิเศษ ดูเมาส์ด้วยตัวติดตามมาตรฐาน และอ่านของที่ลากหลังสะบัดเท่านั้น"
+          }
+        }
+      }
+    },
+    "Shakes · mouse": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "สะบัด · เมาส์"
+          }
+        }
+      }
+    },
+    "Shakes · trackpad": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "สะบัด · แทร็กแพด"
+          }
+        }
+      }
+    },
+    "Show Traces Folder": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "แสดงโฟลเดอร์ trace"
+          }
+        }
+      }
+    },
+    "Shows": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "แสดง"
+          }
+        }
+      }
+    },
+    "Shrink below": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ย่อให้ต่ำกว่า"
+          }
+        }
+      }
+    },
+    "Shrink below size limit": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ย่อให้ต่ำกว่าขนาดที่ตั้งไว้"
+          }
+        }
+      }
+    },
+    "Slot %@": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ช่อง %@"
+          }
+        }
+      }
+    },
+    "Split pages": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "แยกหน้า"
+          }
+        }
+      }
+    },
+    "Step “%@” can only be the last step": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ขั้น “%@” ต้องอยู่ท้ายสุดเท่านั้น"
+          }
+        }
+      }
+    },
+    "Step “%@” produced a symbolic link, which isn't allowed": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ขั้น “%@” สร้าง symbolic link ซึ่งไม่อนุญาต"
+          }
+        }
+      }
+    },
+    "Step “%@” produced an empty file “%@”": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ขั้น “%@” สร้างไฟล์ว่าง “%@”"
+          }
+        }
+      }
+    },
+    "Step “%@” produced no files.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ขั้น “%@” ไม่ได้สร้างไฟล์"
+          }
+        }
+      }
+    },
+    "Submenu": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เมนูย่อย"
+          }
+        }
+      }
+    },
+    "Submenu items": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "รายการในเมนูย่อย"
+          }
+        }
+      }
+    },
+    "Suggested command": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "คำสั่งแนะนำ"
+          }
+        }
+      }
+    },
+    "Suggested slots are filled from the top of this list. Untick to hide a command for this kind.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ช่องแนะนำจะเติมจากบนสุดของรายการนี้ เอาเครื่องหมายออกเพื่อซ่อนคำสั่งสำหรับชนิดนี้"
+          }
+        }
+      }
+    },
+    "Text": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ข้อความ"
+          }
+        }
+      }
+    },
+    "Text is too long for a QR code": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ข้อความยาวเกินกว่าจะทำ QR ได้"
+          }
+        }
+      }
+    },
+    "The app you dragged from didn't deliver the file in time": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "แอปต้นทางส่งไฟล์มาไม่ทันเวลา"
+          }
+        }
+      }
+    },
+    "This PDF has only one page": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PDF นี้มีหน้าเดียว"
+          }
+        }
+      }
+    },
+    "This command can't handle: %@": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "คำสั่งนี้รับไม่ได้: %@"
+          }
+        }
+      }
+    },
+    "This command comes from the pack “%@”. Its scripts run as you: they can read and change every file you can access.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "คำสั่งนี้มาจากชุดคำสั่ง “%@” สคริปต์รันด้วยสิทธิ์ของคุณ จึงอ่านและแก้ได้ทุกไฟล์ที่คุณเข้าถึงได้"
+          }
+        }
+      }
+    },
+    "Undo: move results to Trash": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ย้อน: ย้ายผลลัพธ์ลงถังขยะ"
+          }
+        }
+      }
+    },
+    "Unknown step “%@”. Scripts must start with ./": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ไม่รู้จักขั้น “%@” สคริปต์ต้องขึ้นต้นด้วย ./"
+          }
+        }
+      }
+    },
+    "Update": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "อัปเดต"
+          }
+        }
+      }
+    },
+    "Updated “%@”. Changed commands will ask again.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "อัปเดต “%@” แล้ว คำสั่งที่เปลี่ยนจะขออนุญาตใหม่"
+          }
+        }
+      }
+    },
+    "Use either run or steps, not both": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ใช้ run หรือ steps อย่างใดอย่างหนึ่ง"
+          }
+        }
+      }
+    },
+    "Version": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เวอร์ชัน"
+          }
+        }
+      }
+    },
+    "Website": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เว็บ"
+          }
+        }
+      }
+    },
+    "Wheel": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "วงล้อ"
+          }
+        }
+      }
+    },
+    "When dragging": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เมื่อลาก"
+          }
+        }
+      }
+    },
+    "Without dragging": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ตอนไม่ได้ลาก"
+          }
+        }
+      }
+    },
+    "Working… Esc to cancel": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "กำลังทำงาน… กด Esc เพื่อยกเลิก"
+          }
+        }
+      }
+    },
+    "Your command": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "คำสั่งของคุณ"
+          }
+        }
+      }
+    },
+    "action.toml needs a name": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "action.toml ต้องมี name"
+          }
+        }
+      }
+    },
+    "action.toml needs run or steps": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "action.toml ต้องมี run หรือ steps"
+          }
+        }
+      }
+    },
+    "convert supports jpg, png, heic, tiff": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "convert รองรับ jpg, png, heic, tiff"
+          }
+        }
+      }
+    },
+    "drag me": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ลากต่อได้"
+          }
+        }
+      }
+    },
+    "min/max are out of range": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "min/max ไม่ถูกต้อง"
+          }
+        }
+      }
+    },
+    "resize needs a size, e.g. resize:1920": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "resize ต้องมีขนาด เช่น resize:1920"
+          }
+        }
+      }
+    },
+    "{query} is replaced with the dragged text or link.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "{query} จะถูกแทนด้วยข้อความหรือลิงก์ที่ลากมา"
+          }
+        }
+      }
+    },
+    "“%@” failed.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” ไม่สำเร็จ"
+          }
+        }
+      }
+    },
+    "“%@” must be a list of text": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” ต้องเป็นรายการข้อความ"
+          }
+        }
+      }
+    },
+    "“%@” must be text": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” ต้องเป็นข้อความ"
+          }
+        }
+      }
+    },
+    "“%@” needs your permission before it can run.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” ต้องได้รับอนุญาตก่อนรัน"
+          }
+        }
+      }
+    },
+    "“%@” no longer exists.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ไม่มี “%@” แล้ว"
+          }
+        }
+      }
+    },
+    "“%@” stopped with exit code %@": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” หยุดด้วย exit code %@"
+          }
+        }
+      }
+    },
+    "“%@” was changed after it was created, so it won't be undone.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” ถูกแก้หลังสร้าง จึงไม่ย้อนให้"
+          }
+        }
+      }
+    },
+    "⌥ + shake opens the wheel": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "⌥ + สะบัด เปิดวง"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

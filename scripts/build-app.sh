@@ -1,0 +1,47 @@
+#!/bin/bash
+# Builds build/Shaken.app (universal) without opening Xcode.
+#   VERSION=0.1.0 scripts/build-app.sh
+#   SIGN_IDENTITY="Developer ID Application: Name (TEAMID)" scripts/build-app.sh   # signed for notarization
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+if [ -z "${DEVELOPER_DIR:-}" ] && [ -d /Applications/Xcode.app ]; then
+  export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
+fi
+VERSION="${VERSION:-0.1.0}"
+BUILD="${BUILD:-$(git rev-list --count HEAD 2>/dev/null || echo 1)}"
+APP=build/Shaken.app
+
+ARCHS=(--arch arm64 --arch x86_64)
+if ! swift build -c release "${ARCHS[@]}" >/dev/null 2>&1; then
+  echo "universal build unavailable, building for this Mac only"
+  ARCHS=()
+  swift build -c release
+fi
+BIN_DIR=$(swift build -c release "${ARCHS[@]}" --show-bin-path)
+
+rm -rf "$APP"
+mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
+cp "$BIN_DIR/Shaken" "$APP/Contents/MacOS/Shaken"
+sed -e "s/__VERSION__/$VERSION/" -e "s/__BUILD__/$BUILD/" Resources/Info.plist > "$APP/Contents/Info.plist"
+cp -R Examples "$APP/Contents/Resources/Examples"
+[ -f Resources/AppIcon.icns ] && cp Resources/AppIcon.icns "$APP/Contents/Resources/" && \
+  /usr/libexec/PlistBuddy -c "Add :CFBundleIconFile string AppIcon" "$APP/Contents/Info.plist"
+
+# String Catalog → <lang>.lproj/Localizable.strings
+if xcrun --find xcstringstool >/dev/null 2>&1; then
+  xcrun xcstringstool compile Resources/Localizable.xcstrings --output-directory "$APP/Contents/Resources" >/dev/null
+  # English is the source language (keys are English); an empty table makes it a real localization.
+  mkdir -p "$APP/Contents/Resources/en.lproj"
+  [ -f "$APP/Contents/Resources/en.lproj/Localizable.strings" ] || printf '' > "$APP/Contents/Resources/en.lproj/Localizable.strings"
+else
+  echo "warning: xcstringstool not found (needs Xcode); app will be English only" >&2
+fi
+
+if [ -n "${SIGN_IDENTITY:-}" ]; then
+  codesign --force --options runtime --timestamp --sign "$SIGN_IDENTITY" "$APP"
+else
+  codesign --force --sign - "$APP"   # ad-hoc: runs locally, Gatekeeper will warn elsewhere
+fi
+codesign --verify --strict "$APP"
+echo "built $APP ($VERSION)"
