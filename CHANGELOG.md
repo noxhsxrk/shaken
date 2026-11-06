@@ -2,6 +2,11 @@
 
 All notable changes to Shaken. Versions follow [Semantic Versioning](https://semver.org).
 
+## 0.3.1 - 2026-11-06
+
+### Changed
+- New tagline: "A little shake. A lot less work." It shows in the README and the installer window.
+
 ## 0.3.0 - 2026-11-06
 
 ### Added

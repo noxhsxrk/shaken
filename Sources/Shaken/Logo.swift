@@ -72,7 +72,7 @@ enum Logo {
         let title = NSAttributedString(string: "Shaken", attributes: [
             .font: NSFont.systemFont(ofSize: 26, weight: .bold), .foregroundColor: Brand.lightText])
         title.draw(at: NSPoint(x: (size.width - title.size().width) / 2, y: 330))
-        let sub = NSAttributedString(string: "Shake mid-drag, pick a command, drag the result onward.", attributes: [
+        let sub = NSAttributedString(string: "A little shake. A lot less work.", attributes: [
             .font: NSFont.systemFont(ofSize: 13, weight: .regular), .foregroundColor: Brand.lightText.withAlphaComponent(0.6)])
         sub.draw(at: NSPoint(x: (size.width - sub.size().width) / 2, y: 306))
 

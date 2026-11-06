@@ -5,7 +5,7 @@
 <h1 align="center">Shaken</h1>
 
 <p align="center">
-  <strong>Shake mid-drag, pick a command, drag the result onward.</strong><br>
+  <strong>A little shake. A lot less work.</strong><br>
   A radial launcher and drag toolkit for the Mac menu bar.
 </p>
 
