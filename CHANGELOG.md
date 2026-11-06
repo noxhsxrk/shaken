@@ -2,11 +2,14 @@
 
 All notable changes to Shaken. Versions follow [Semantic Versioning](https://semver.org).
 
-## Unreleased
+## 0.2.1 - 2026-11-06
 
 ### Added
 - Switching wheels slides: the wheel follows a two-finger swipe, slides on to the next wheel, or springs back if you let go early. ⌘← / ⌘→ slide too. Reduce Motion switches instantly.
 - Check for Updates installs the new version in place and relaunches, after checking the download against the release's SHA-256. The daily check asks before installing.
+
+### Changed
+- Updates come from shaken.noxhsxrk.com, which also has a new download page where you can pick any version and read its notes.
 
 ## 0.2.0 - 2026-11-06
 
