@@ -70,3 +70,34 @@ import UniformTypeIdentifiers
         #expect(FileManager.default.fileExists(atPath: s.src.appendingPathComponent("Trip 01.png").path))
     }
 }
+
+@Suite struct SlotResultTests {
+    @Test func scriptOutputBecomesAResult() async throws {
+        let s = try Sandbox()
+        let a = try s.image("a.png")
+        let r = try await s.runner.runSlot("Note", input: .files([a])) { out in
+            try await InlineScript.run("echo hi > \"$SHAKEN_OUTPUT/$(basename \"$1\" .png).txt\"", language: .shell, input: .files([a]), output: out)
+        }
+        #expect(r.outputs.map(\.lastPathComponent) == ["a.txt"])
+        #expect(r.outputs[0].deletingLastPathComponent().path == s.src.path)   // next to the input
+        try JobRunner.undo(r, trash: { try FileManager.default.removeItem(at: $0) })
+        #expect(!FileManager.default.fileExists(atPath: r.outputs[0].path))
+    }
+
+    @Test func scriptWithoutOutputHasNoResult() async throws {
+        let s = try Sandbox()
+        let r = try await s.runner.runSlot("Quiet", input: nil) { out in
+            try await InlineScript.run("true", language: .shell, output: out)
+        }
+        #expect(r.outputs.isEmpty)
+    }
+
+    @Test func sniffsShortcutOutput() throws {
+        let s = try Sandbox()
+        let f = s.root.appendingPathComponent("raw")
+        try Data("%PDF-1.7".utf8).write(to: f)
+        #expect(Shortcuts.sniffExtension(f) == "pdf")
+        try Data("hello".utf8).write(to: f)
+        #expect(Shortcuts.sniffExtension(f) == "txt")
+    }
+}

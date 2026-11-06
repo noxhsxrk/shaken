@@ -79,6 +79,27 @@ public final class JobRunner {
                          inputBytes: inBytes, outputBytes: Self.totalSize(outputs), message: message)
     }
 
+    /// Runs a Shortcut or inline script slot. Files it leaves in the output folder are placed like
+    /// a command's results (next to the input, or in Downloads), so they get the chip and undo.
+    public func runSlot(_ title: String, input: JobInput?, _ body: (URL) async throws -> Void) async throws -> JobResult {
+        let dest = OutputPlacer.destination(for: input?.files ?? [], inbox: inbox, downloads: downloads)
+        try Self.checkWritable(dest)
+        let work = try FileManager.default.url(for: .itemReplacementDirectory, in: .userDomainMask, appropriateFor: dest, create: true)
+        defer { try? FileManager.default.removeItem(at: work) }
+        try await body(work)
+        try Task.checkCancellation()
+        let made = (try? FileManager.default.contentsOfDirectory(at: work, includingPropertiesForKeys: nil, options: [.skipsHiddenFiles])) ?? []
+        guard !made.isEmpty else {
+            return JobResult(actionName: title, outputs: [], fingerprints: [:], inputBytes: 0, outputBytes: 0, message: nil)
+        }
+        let staged = try Self.validatedOutputs(work, step: .script(title))
+        let placed = try OutputPlacer.place(staged, into: dest)
+        var prints: [String: String] = [:]
+        for o in placed { prints[o.path] = try Fingerprint.sha256(o) }
+        return JobResult(actionName: title, outputs: placed, fingerprints: prints,
+                         inputBytes: Self.totalSize(input?.files ?? []), outputBytes: Self.totalSize(placed), message: nil)
+    }
+
     /// Copies dropped items into a folder (folder slots). Shares placement, chip and undo with actions.
     public func copy(_ files: [URL], into folder: URL) async throws -> JobResult {
         try Self.checkWritable(folder)

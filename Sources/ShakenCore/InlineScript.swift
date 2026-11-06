@@ -6,7 +6,8 @@ import Foundation
 public enum InlineScript {
     public enum Language: Sendable { case shell, applescript }
 
-    public static func run(_ code: String, language: Language, input: JobInput? = nil) async throws {
+    /// - Parameter output: a folder exposed as `$SHAKEN_OUTPUT`; files the script writes there become results.
+    public static func run(_ code: String, language: Language, input: JobInput? = nil, output: URL? = nil) async throws {
         var args: [String] = []
         var env: [String: String] = [:]
         switch input {
@@ -15,6 +16,7 @@ public enum InlineScript {
         case .link(let u)?: args = [u.absoluteString]; env["SHAKEN_TEXT"] = u.absoluteString
         case nil: break
         }
+        if let output { env["SHAKEN_OUTPUT"] = output.path }
         let r: Subprocess.Result
         switch language {
         case .shell:

@@ -148,22 +148,12 @@ extension AppController {
         }
     }
 
+    /// Shortcuts and scripts share the command path: results land in the chip, with undo.
     func runShortcut(_ slot: ResolvedSlot, input: JobInput?) {
-        job?.cancel()
-        job = Task { @MainActor [weak self] in
-            do {
-                try await Shortcuts.run(slot.target, input: input)
-                self?.job = nil
-                self?.chipClose()
-            } catch is CancellationError {
-                self?.job = nil
-                self?.chipClose()
-            } catch {
-                self?.fail(error)
-            }
-            self?.updateEscape()
+        let name = slot.target
+        run(label: slot.title) { runner in
+            try await runner.runSlot(slot.title, input: input) { out in try await Shortcuts.run(name, input: input, output: out) }
         }
-        updateEscape()
     }
 
     /// "Run now" in Settings: does what clicking the slot on a wheel opened without dragging does.
@@ -179,21 +169,11 @@ extension AppController {
     }
 
     func runScript(_ slot: ResolvedSlot, input: JobInput?) {
-        job?.cancel()
-        job = Task { @MainActor [weak self] in
-            do {
-                try await InlineScript.run(slot.target, language: slot.kind == .shell ? .shell : .applescript, input: input)
-                self?.job = nil
-                self?.chipClose()
-            } catch is CancellationError {
-                self?.job = nil
-                self?.chipClose()
-            } catch {
-                self?.fail(error)
-            }
-            self?.updateEscape()
+        let code = slot.target
+        let lang: InlineScript.Language = slot.kind == .shell ? .shell : .applescript
+        run(label: slot.title) { runner in
+            try await runner.runSlot(slot.title, input: input) { out in try await InlineScript.run(code, language: lang, input: input, output: out) }
         }
-        updateEscape()
     }
 
     func typeSlot(_ slot: ResolvedSlot) {
