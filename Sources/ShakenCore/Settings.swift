@@ -163,6 +163,31 @@ public struct HotKeySetting: Codable, Equatable, Sendable {
     }
 }
 
+/// Where the glass gets its colour.
+public enum GlassTint: String, Codable, CaseIterable, Sendable {
+    /// The accent colour chosen in System Settings › Appearance.
+    case system
+    /// Shaken's own periwinkle.
+    case shaken
+    /// Any colour, in `glassTintHex`.
+    case custom
+
+    public static let shakenHex = "#7D89ED"
+
+    /// "#RRGGBB" (or "RRGGBB") as 0–1 components.
+    public static func rgb(fromHex hex: String) -> (r: Double, g: Double, b: Double)? {
+        var h = hex.trimmingCharacters(in: .whitespaces)
+        if h.hasPrefix("#") { h.removeFirst() }
+        guard h.count == 6, let v = UInt32(h, radix: 16) else { return nil }
+        return (Double((v >> 16) & 0xFF) / 255, Double((v >> 8) & 0xFF) / 255, Double(v & 0xFF) / 255)
+    }
+
+    public static func hex(r: Double, g: Double, b: Double) -> String {
+        func c(_ x: Double) -> Int { Int((min(max(x, 0), 1) * 255).rounded()) }
+        return String(format: "#%02X%02X%02X", c(r), c(g), c(b))
+    }
+}
+
 public struct KindPreference: Codable, Equatable, Sendable {
     /// Action ids in the user's preferred order (unlisted ones follow in default order).
     public var order: [String] = []
@@ -196,6 +221,12 @@ public struct ShakenSettings: Codable, Equatable, Sendable {
     public var checkForUpdates = true
     /// Show a picture of an app's window in the app switcher (needs Screen Recording).
     public var windowPreviews = false
+    /// The colour of the wheel's glass, the chip and the shelf.
+    public var glassTint: GlassTint = .system
+    /// Used when `glassTint` is `.custom`: "#RRGGBB".
+    public var glassTintHex = GlassTint.shakenHex
+    /// How strongly the glass takes the colour, 0 (neutral grey) to 1.
+    public var glassTintStrength = 0.5
     public static let maxWheels = 20
 
     /// The slots for a wheel opened without dragging while `bundleID` is in front.
@@ -215,6 +246,10 @@ public struct ShakenSettings: Codable, Equatable, Sendable {
     public func validated() -> ShakenSettings {
         var s = self
         s.version = Self.currentVersion
+        // JPGs now use the images list; keep a JPG order someone set before images had one.
+        if let jpg = s.kindPreferences.removeValue(forKey: KindKey.jpeg.rawValue), s.kindPreferences[KindKey.image.rawValue] == nil {
+            s.kindPreferences[KindKey.image.rawValue] = jpg
+        }
         var seen = Set<String>()
         func fix(_ slot: Slot, depth: Int) -> Slot {
             var x = slot
@@ -277,6 +312,8 @@ public struct ShakenSettings: Codable, Equatable, Sendable {
         var s = self
         s.gesture.sensitivity = min(max(s.gesture.sensitivity, 1), 5)
         s.shrinkTargetKB = min(max(s.shrinkTargetKB, 50), 100_000)
+        s.glassTintStrength = s.glassTintStrength.isFinite ? min(max(s.glassTintStrength, 0), 1) : 0.5
+        if GlassTint.rgb(fromHex: s.glassTintHex) == nil { s.glassTintHex = GlassTint.shakenHex }
         s.excludedApps = Array(Set(s.excludedApps.filter { !$0.isEmpty })).sorted()
         for (k, v) in s.kindPreferences {
             if KindKey(rawValue: k) == nil { s.kindPreferences[k] = nil; continue }
@@ -337,6 +374,7 @@ public final class SettingsStore {
 extension ShakenSettings {
     enum CodingKeys: String, CodingKey {
         case version, slots, gesture, excludedApps, hotKey, shrinkTargetKB, kindPreferences, approvals, appWheels, wheels, checkForUpdates, windowPreviews
+        case glassTint, glassTintHex, glassTintStrength
     }
 
     public init(from d: Decoder) throws {
@@ -353,6 +391,9 @@ extension ShakenSettings {
         wheels = try c.decodeIfPresent([NamedWheel].self, forKey: .wheels) ?? []
         checkForUpdates = try c.decodeIfPresent(Bool.self, forKey: .checkForUpdates) ?? true
         windowPreviews = try c.decodeIfPresent(Bool.self, forKey: .windowPreviews) ?? false
+        glassTint = (try? c.decodeIfPresent(GlassTint.self, forKey: .glassTint)) ?? .system
+        glassTintHex = try c.decodeIfPresent(String.self, forKey: .glassTintHex) ?? GlassTint.shakenHex
+        glassTintStrength = try c.decodeIfPresent(Double.self, forKey: .glassTintStrength) ?? 0.5
     }
 }
 

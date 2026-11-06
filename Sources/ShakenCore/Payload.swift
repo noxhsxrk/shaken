@@ -88,7 +88,8 @@ public enum KindKey: String, Codable, CaseIterable, Sendable {
         case .link: return .link
         case .text: return .text
         case .file, .promise:
-            if first.conforms(to: UTType.jpeg.identifier) { return .jpeg }
+            // JPGs share the images list: a separate list was easy to miss. (Commands that
+            // don't fit a JPG, like Convert to JPG, are skipped for it automatically.)
             if first.conforms(to: UTType.image.identifier) { return .image }
             if first.conforms(to: UTType.pdf.identifier) { return .pdf }
             return .file
@@ -97,8 +98,8 @@ public enum KindKey: String, Codable, CaseIterable, Sendable {
 
     public var title: String {
         switch self {
-        case .image: return L("Image (HEIC, PNG…)")
-        case .jpeg: return L("JPG")
+        case .image: return L("Image (JPG, PNG, HEIC…)")
+        case .jpeg: return L("JPG (old)")
         case .pdf: return L("PDF")
         case .multiple: return L("Several items")
         case .folder: return L("Folder")

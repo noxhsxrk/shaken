@@ -41,6 +41,68 @@ public enum ActionResolver {
         }.map(\.element)
     }
 
+    /// Commands the user put on a slot (or inside a submenu) themselves. Suggestions skip them.
+    public static func pinnedActionIDs(_ wheel: [Slot]) -> Set<String> {
+        var pinned = Set<String>()
+        for s in wheel {
+            if s.kind == .action { pinned.insert(s.target) }
+            for c in s.children where c.kind == .action { pinned.insert(c.target) }
+        }
+        return pinned
+    }
+
+    /// Which Suggested slot this is, counting only Suggested slots: 0 for the first one.
+    public static func suggestedIndex(ofSlot i: Int, in wheel: [Slot]) -> Int? {
+        guard wheel.indices.contains(i), wheel[i].kind == .auto else { return nil }
+        return wheel[..<i].filter { $0.kind == .auto }.count
+    }
+
+    /// Makes slot `slot` of `wheel` (a Suggested slot) show `actionID` for items like `payload`.
+    /// It swaps places with the command the slot shows now, in the full order for this kind, so
+    /// every other command keeps its exact rank: other items of the same kind (a JPG and a HEIC,
+    /// two PDFs and a folder…) see the same swap and nothing else. A hidden command is shown again.
+    /// - Parameters:
+    ///   - actions: the commands the wheel offers (for the clipboard, without the copy-text ones).
+    ///   - allActions: every command, so ones `actions` leaves out keep their rank. Defaults to `actions`.
+    public static func place(_ actionID: String, inSlot slot: Int, payload: DragPayload, wheel: [Slot],
+                             actions: [ActionManifest], allActions: [ActionManifest]? = nil, settings: inout ShakenSettings) {
+        let kind = payload.kindKey
+        guard kind != .none, suggestedIndex(ofSlot: slot, in: wheel) != nil else { return }
+        let resolved = layout(payload: payload, actions: actions, settings: settings, slots: wheel)
+        let current = resolved.indices.contains(slot) ? resolved[slot].actionID : nil
+        guard current != actionID else { return }
+
+        var pref = settings.preference(for: kind)
+        let wasHidden = pref.hidden.contains(actionID)
+        pref.hidden.removeAll { $0 == actionID }
+        // The full ranking the resolver uses: the saved order, then everything else in registry order.
+        var ids: [String] = []
+        for id in pref.order + (allActions ?? actions).map(\.id) where !ids.contains(id) { ids.append(id) }
+        guard let from = ids.firstIndex(of: actionID) else { return }
+        if let current, let to = ids.firstIndex(of: current) {
+            if wasHidden {
+                // It wasn't on any slot, so nothing swaps out: it goes in just ahead of this slot's command.
+                ids.remove(at: from)
+                ids.insert(actionID, at: ids.firstIndex(of: current) ?? to)
+            } else {
+                ids.swapAt(from, to)
+            }
+        } else if let last = resolved.compactMap(\.actionID).last(where: { $0 != actionID }),
+                  let lastAt = ids.firstIndex(of: last), lastAt > from {
+            // The slot was left empty (fewer commands than slots): go right after the last one shown.
+            ids.insert(ids.remove(at: from), at: lastAt)
+        }
+        pref.order = ids
+        settings.kindPreferences[kind.rawValue] = pref
+    }
+
+    /// The same, on the main wheel, for a typical item of `kind` (the Commands tab in Settings).
+    public static func place(_ actionID: String, inSlot slot: Int, for kind: KindKey,
+                             actions: [ActionManifest], settings: inout ShakenSettings) {
+        place(actionID, inSlot: slot, payload: samplePayload(for: kind), wheel: settings.slots,
+              actions: actions, settings: &settings)
+    }
+
     /// A typical payload for each kind, used by Settings to list the actions for that kind.
     public static func samplePayload(for kind: KindKey) -> DragPayload {
         func file(_ name: String, _ type: String) -> DragItem {
@@ -85,11 +147,7 @@ public enum ActionResolver {
         let wheel = wheelSlots ?? settings.slots
         let byID = Dictionary(actions.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
         // Actions the user pinned to a slot shouldn't appear twice.
-        var pinned = Set<String>()
-        for s in wheel {
-            if s.kind == .action { pinned.insert(s.target) }
-            for c in s.children where c.kind == .action { pinned.insert(c.target) }
-        }
+        let pinned = pinnedActionIDs(wheel)
         var queue = suggestions(for: payload, actions: actions, settings: settings).filter { !pinned.contains($0.id) }[...]
         // Skip fallback places the user already put on the wheel.
         let fixedTargets = Set(wheel.filter { $0.kind == .folder }.map(\.target))

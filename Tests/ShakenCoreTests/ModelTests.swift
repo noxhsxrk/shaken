@@ -116,8 +116,12 @@ struct ResolverTests {
         s.kindPreferences[KindKey.image.rawValue] = KindPreference(order: ["builtin.open-preview"], hidden: ["builtin.strip-metadata"])
         let r = ActionResolver.suggestions(for: DragPayload([item("heic")]), actions: actions, settings: s).map(\.id)
         #expect(Array(r.prefix(4)) == ["builtin.open-preview", "builtin.to-jpg", "builtin.shrink", "builtin.copy-names"])
+        // JPGs share the images list.
+        #expect(!ActionResolver.suggestions(for: DragPayload([item("jpg")]), actions: actions, settings: s).map(\.id).contains("builtin.strip-metadata"))
         // Other kinds are unaffected.
-        #expect(ActionResolver.suggestions(for: DragPayload([item("jpg")]), actions: actions, settings: s).map(\.id).contains("builtin.strip-metadata"))
+        var t = settings
+        t.kindPreferences[KindKey.image.rawValue] = KindPreference(hidden: ["builtin.copy-names"])
+        #expect(ActionResolver.suggestions(for: DragPayload([item("heic"), item("heic")]), actions: actions, settings: t).map(\.id).contains("builtin.copy-names"))
     }
 
     @Test func layoutFillsAutoSlotsAndKeepsFixedOnes() {
@@ -196,5 +200,130 @@ struct SettingsTests {
         #expect(SettingsStore(url: url).settings == ShakenSettings())
         try Data("garbage".utf8).write(to: url)
         #expect(SettingsStore(url: url).settings == ShakenSettings())
+    }
+}
+
+struct PlaceCommandTests {
+    let actions = ActionRegistry.builtins()
+
+    func wheel(_ s: ShakenSettings) -> [String?] {
+        ActionResolver.layout(payload: ActionResolver.samplePayload(for: .image), actions: actions, settings: s).map(\.actionID)
+    }
+
+    @Test func pickingACommandSwapsItIntoTheSlot() {
+        var s = ShakenSettings()
+        let before = wheel(s)
+        let all = ActionResolver.suggestions(for: ActionResolver.samplePayload(for: .image), actions: actions, settings: s).map(\.id)
+        let extra = all[ShakenSettings.slotCount]   // not on the wheel yet
+        ActionResolver.place(extra, inSlot: 2, for: .image, actions: actions, settings: &s)
+        let after = wheel(s)
+        #expect(after[2] == extra)
+        for i in after.indices where i != 2 { #expect(after[i] == before[i]) }
+    }
+
+    @Test func pickingOneAlreadyShownSwapsTheTwoSlots() {
+        var s = ShakenSettings()
+        let before = wheel(s)
+        ActionResolver.place(before[4]!, inSlot: 0, for: .image, actions: actions, settings: &s)
+        let after = wheel(s)
+        #expect(after[0] == before[4] && after[4] == before[0])
+        #expect(after[1...3] == before[1...3])
+    }
+
+    @Test func pickingAHiddenCommandShowsItAgain() {
+        var s = ShakenSettings()
+        let id = wheel(s)[1]!
+        s.kindPreferences[KindKey.image.rawValue] = KindPreference(hidden: [id])
+        #expect(!wheel(s).contains(id))
+        ActionResolver.place(id, inSlot: 1, for: .image, actions: actions, settings: &s)
+        #expect(wheel(s)[1] == id)
+    }
+
+    @Test func jpgsShareTheImagesList() {
+        let jpg = DragPayload([DragItem(kind: .file, url: URL(fileURLWithPath: "/tmp/a.jpg"), types: ["public.jpeg"], displayName: "a.jpg")])
+        #expect(jpg.kindKey == .image)
+        var s = ShakenSettings()
+        let shown = ActionResolver.layout(payload: jpg, actions: actions, settings: s).map(\.actionID)
+        #expect(!shown.contains("builtin.to-jpg"))
+        let extra = ActionResolver.suggestions(for: jpg, actions: actions, settings: s).map(\.id)[ShakenSettings.slotCount]
+        ActionResolver.place(extra, inSlot: 0, payload: jpg, wheel: s.slots, actions: actions, settings: &s)
+        #expect(ActionResolver.layout(payload: jpg, actions: actions, settings: s).first?.actionID == extra)
+    }
+
+    @Test func anOldJPGOrderBecomesTheImagesOrder() {
+        var s = ShakenSettings()
+        s.kindPreferences["jpeg"] = KindPreference(order: ["builtin.strip-metadata"])
+        let v = s.validated()
+        #expect(v.kindPreferences["jpeg"] == nil)
+        #expect(v.kindPreferences["image"]?.order == ["builtin.strip-metadata"])
+    }
+
+    @Test func placesOnAnExtraWheelToo() {
+        var s = ShakenSettings()
+        var extra = ShakenSettings.defaultSlots()
+        extra[0] = Slot(kind: .app, target: "/Applications/Calendar.app")   // fixed, so slot 2 is Suggested #0
+        let p = ActionResolver.samplePayload(for: .image)
+        let all = ActionResolver.suggestions(for: p, actions: actions, settings: s).map(\.id)
+        ActionResolver.place(all[ShakenSettings.slotCount], inSlot: 1, payload: p, wheel: extra, actions: actions, settings: &s)
+        let r = ActionResolver.layout(payload: p, actions: actions, settings: s, slots: extra)
+        #expect(r[1].actionID == all[ShakenSettings.slotCount])
+    }
+
+    @Test func aChangeOnAJPGOnlySwapsThoseTwoOnTheHEICWheel() {
+        var s = ShakenSettings()
+        let heic = ActionResolver.samplePayload(for: .image)
+        let jpg = DragPayload([DragItem(kind: .file, url: URL(fileURLWithPath: "/tmp/a.jpg"), types: ["public.jpeg"], displayName: "a.jpg")])
+        // Some order set through the HEIC wheel first.
+        ActionResolver.place(ActionResolver.suggestions(for: heic, actions: actions, settings: s).map(\.id)[7], inSlot: 3, for: .image, actions: actions, settings: &s)
+        let heicBefore = wheel(s)
+        let jpgWheel = ActionResolver.layout(payload: jpg, actions: actions, settings: s).map(\.actionID)
+        // On the JPG wheel, put the JPG's slot-5 command into slot 1.
+        ActionResolver.place(jpgWheel[4]!, inSlot: 0, payload: jpg, wheel: s.slots, actions: actions, settings: &s)
+        let heicAfter = wheel(s)
+        let changed = heicAfter.indices.filter { heicAfter[$0] != heicBefore[$0] }
+        #expect(changed.count <= 2)
+        if changed.count == 2 { #expect(heicAfter[changed[0]] == heicBefore[changed[1]] && heicAfter[changed[1]] == heicBefore[changed[0]]) }
+        #expect(ActionResolver.layout(payload: jpg, actions: actions, settings: s).first?.actionID == jpgWheel[4])
+    }
+
+    @Test func commandsTheWheelLeavesOutKeepTheirRank() {
+        // The clipboard wheel leaves out Copy text / Copy link; picking there must not move them.
+        var s = ShakenSettings()
+        let link = ActionResolver.samplePayload(for: .link)
+        let all = ActionResolver.suggestions(for: link, actions: actions, settings: s).map(\.id)
+        let filtered = actions.filter { !$0.onlyCopiesText }
+        let left = actions.filter(\.onlyCopiesText).map(\.id).filter { all.contains($0) }
+        let offered = ActionResolver.suggestions(for: link, actions: filtered, settings: s).map(\.id)
+        #expect(!left.isEmpty && offered.count >= 2)
+        guard offered.count >= 2 else { return }
+        ActionResolver.place(offered[1], inSlot: 0, payload: link, wheel: s.slots, actions: filtered, allActions: actions, settings: &s)
+        #expect(ActionResolver.layout(payload: link, actions: filtered, settings: s).first?.actionID == offered[1])
+        let after = ActionResolver.suggestions(for: link, actions: actions, settings: s).map(\.id)
+        for id in left { #expect(after.firstIndex(of: id) == all.firstIndex(of: id)) }
+    }
+
+    @Test func suggestedIndexSkipsFixedSlots() {
+        var slots = ShakenSettings.defaultSlots()
+        slots[0] = Slot(kind: .app, target: "/Applications/Calendar.app")
+        #expect(ActionResolver.suggestedIndex(ofSlot: 0, in: slots) == nil)
+        #expect(ActionResolver.suggestedIndex(ofSlot: 3, in: slots) == 2)
+    }
+}
+
+struct GlassTintTests {
+    @Test func hexRoundTrips() {
+        let c = GlassTint.rgb(fromHex: "#7D89ED")!
+        #expect(GlassTint.hex(r: c.r, g: c.g, b: c.b) == "#7D89ED")
+        #expect(GlassTint.rgb(fromHex: "zz") == nil)
+    }
+
+    @Test func oldSettingsFollowTheMacAndBadValuesAreFixed() throws {
+        let old = try JSONDecoder().decode(ShakenSettings.self, from: Data("{}".utf8))
+        #expect(old.glassTint == .system && old.glassTintStrength == 0.5)
+        var s = ShakenSettings()
+        s.glassTintStrength = 7
+        s.glassTintHex = "nope"
+        let v = s.validated()
+        #expect(v.glassTintStrength == 1 && v.glassTintHex == GlassTint.shakenHex)
     }
 }

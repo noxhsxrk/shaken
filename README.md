@@ -268,7 +268,12 @@ disabled on the wheel until it's complete.
 Snippets restore your previous clipboard afterwards. Keys can be written as `cmd+shift+4`,
 `ctrl+opt+t`, `f5` or `⌃⌥T`. Every slot has a **Run Now** button in Settings so you can try it.
 
-*Settings → Commands* reorders or hides suggested commands for each kind of item.
+*Settings → Commands* shows the wheel you get for each kind of item: click a slot, then pick the
+command it shows. You can also open the wheel with your shortcut and right-click (or Control-click)
+a slot to change it right there. JPGs share the list with other images; two or more items use
+*Several items*.
+*Settings → General → Glass* tints the glass with your Mac's accent color, Shaken blue or a color
+you pick, as strongly as you like.
 *Settings → Gesture* sets shake sensitivity, an optional key to hold, apps to ignore and the
 keyboard shortcut.
 

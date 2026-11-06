@@ -1,11 +1,42 @@
 import AppKit
 import SwiftUI
+import ShakenCore
 
 /// Colours and artwork from the Shaken asset kit. The glyphs, menu bar template and app icon live in Resources/.
 enum Brand {
     // MARK: colours
 
-    static let accent = NSColor(srgbRed: 0x7D / 255, green: 0x89 / 255, blue: 0xED / 255, alpha: 1)        // #7D89ED
+    /// Shaken's own periwinkle (#7D89ED): the app icon, the installer and the "Shaken blue" glass.
+    static let brandAccent = NSColor(srgbRed: 0x7D / 255, green: 0x89 / 255, blue: 0xED / 255, alpha: 1)
+
+    /// The glass colour setting. AppController points this at the settings store.
+    static var look: () -> (tint: GlassTint, hex: String, strength: Double) = { (.system, GlassTint.shakenHex, 0.5) }
+
+    /// The accent for the wheel, chip, shelf and Settings: the Mac's accent colour, Shaken blue or a custom one.
+    static var accent: NSColor {
+        let l = look()
+        switch l.tint {
+        case .shaken: return brandAccent
+        case .custom:
+            guard let c = GlassTint.rgb(fromHex: l.hex) else { return brandAccent }
+            return NSColor(srgbRed: c.r, green: c.g, blue: c.b, alpha: 1)
+        case .system:
+            return NSColor.controlAccentColor.usingColorSpace(.sRGB) ?? brandAccent
+        }
+    }
+
+    /// Text and icons on a selected (accent) tile: white while it has at least 3:1 contrast
+    /// (WCAG for bold and large text), dark on light accents such as yellow, orange or green.
+    static var onAccent: NSColor {
+        guard let c = accent.usingColorSpace(.sRGB) else { return .white }
+        func lin(_ x: CGFloat) -> CGFloat { x <= 0.04045 ? x / 12.92 : pow((x + 0.055) / 1.055, 2.4) }
+        let lum = 0.2126 * lin(c.redComponent) + 0.7152 * lin(c.greenComponent) + 0.0722 * lin(c.blueComponent)
+        return 1.05 / (lum + 0.05) >= 3 ? .white : lightText
+    }
+    static var onAccentColor: Color { Color(nsColor: onAccent) }
+
+    /// How strongly unselected glass takes the accent, 0–1.
+    static var tintStrength: CGFloat { CGFloat(look().strength) }
     static let darkSurface = NSColor(srgbRed: 0x20 / 255, green: 0x28 / 255, blue: 0x3D / 255, alpha: 1)   // #20283D
     static let lightSurface = NSColor(srgbRed: 0xF5 / 255, green: 0xF7 / 255, blue: 0xFF / 255, alpha: 1)  // #F5F7FF
     static let darkText = NSColor(srgbRed: 0xF4 / 255, green: 0xF5 / 255, blue: 0xFF / 255, alpha: 1)      // #F4F5FF
@@ -30,15 +61,21 @@ enum Brand {
         path.addClip()
         let top: NSColor
         let bottom: NSColor
+        let a = accent
+        // Neutral glass, pulled toward the accent by the strength setting.
+        let pull = 0.42 * tintStrength
+        func mix(_ base: NSColor, _ amount: CGFloat, alpha: CGFloat) -> NSColor {
+            (base.blended(withFraction: amount, of: a) ?? base).withAlphaComponent(alpha)
+        }
         if selected {
-            top = NSColor(srgbRed: 0.63, green: 0.68, blue: 1, alpha: 0.98)
-            bottom = NSColor(srgbRed: 0.40, green: 0.45, blue: 0.87, alpha: 0.98)
+            top = (a.blended(withFraction: 0.3, of: .white) ?? a).withAlphaComponent(0.98)
+            bottom = (a.blended(withFraction: 0.1, of: .black) ?? a).withAlphaComponent(0.98)
         } else if dark {
-            top = NSColor(srgbRed: 0.25, green: 0.30, blue: 0.43, alpha: opaque ? 1 : 0.52)
-            bottom = NSColor(srgbRed: 0.10, green: 0.13, blue: 0.23, alpha: opaque ? 1 : 0.72)
+            top = mix(NSColor(srgbRed: 0.27, green: 0.28, blue: 0.31, alpha: 1), pull, alpha: opaque ? 1 : 0.52)
+            bottom = mix(NSColor(srgbRed: 0.10, green: 0.11, blue: 0.13, alpha: 1), pull * 0.8, alpha: opaque ? 1 : 0.72)
         } else {
-            top = NSColor(white: 1, alpha: opaque ? 1 : 0.64)
-            bottom = NSColor(srgbRed: 0.79, green: 0.83, blue: 0.94, alpha: opaque ? 1 : 0.62)
+            top = mix(.white, pull * 0.25, alpha: opaque ? 1 : 0.64)
+            bottom = mix(NSColor(srgbRed: 0.86, green: 0.87, blue: 0.89, alpha: 1), pull, alpha: opaque ? 1 : 0.62)
         }
         NSGradient(starting: bottom, ending: top)?.draw(in: path, angle: 90)
         if !opaque {

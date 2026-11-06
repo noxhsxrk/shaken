@@ -47,6 +47,8 @@ protocol WheelDelegate: AnyObject {
     func wheel(didDrop slot: ResolvedSlot, pasteboard: NSPasteboard, at point: NSPoint)
     func wheel(didDropOnShelf pasteboard: NSPasteboard, at point: NSPoint)
     func wheel(didClick slot: ResolvedSlot, at point: NSPoint)
+    /// Right-click or Control-click on a slot (click mode): a menu to change what it shows.
+    func wheel(didRightClickSlotAt index: Int, menuHost view: NSView, at point: NSPoint)
     func wheelShouldClose()
     /// Two-finger swipe sideways on a trackpad or Magic Mouse: flip to the next or previous wheel.
     func wheelSwipe(next: Bool)
@@ -73,15 +75,12 @@ final class WheelController {
         effect.material = .hudWindow
         effect.blendingMode = .behindWindow
         effect.state = .active
-        // The glass is cut into the same tiles the view draws, so gaps show the desktop.
-        effect.maskImage = NSImage(size: size, flipped: false) { r in
-            let g = WheelGeometry(bounds: r)
-            NSColor.black.setFill()
-            g.centreDisc.fill()
-            for i in 0..<g.count { g.sector(i).fill() }
-            return true
-        }
         view = WheelView(frame: effect.bounds)
+        // The glass is cut into the same tiles the view draws, so gaps show the desktop. It's a layer
+        // mask, not a mask image, so the cut-out turns with the ring when switching wheels.
+        effect.wantsLayer = true
+        view.glassMask.frame = effect.bounds
+        effect.layer?.mask = view.glassMask
         view.autoresizingMask = [.width, .height]
         effect.addSubview(view)
         panel.contentView = effect
@@ -183,6 +182,10 @@ final class WheelController {
 
     fileprivate func clicked(_ slot: ResolvedSlot) {
         delegate?.wheel(didClick: slot, at: NSEvent.mouseLocation)
+    }
+
+    fileprivate func rightClicked(_ index: Int, in view: NSView, at point: NSPoint) {
+        delegate?.wheel(didRightClickSlotAt: index, menuHost: view, at: point)
     }
 
     fileprivate func swiped(next: Bool) { delegate?.wheelSwipe(next: next) }
@@ -306,6 +309,7 @@ final class WheelView: NSView {
     override init(frame: NSRect) {
         super.init(frame: frame)
         wantsLayer = true   // the ring turns as layers on top while switching wheels
+        buildGlassMask()
         registerForDraggedTypes(DragReader.acceptedTypes)
         addTrackingArea(NSTrackingArea(rect: .zero, options: [.mouseMoved, .mouseEnteredAndExited, .activeAlways, .inVisibleRect], owner: self))
     }
@@ -362,8 +366,55 @@ final class WheelView: NSView {
 
     // MARK: turning the ring
 
+    /// The shape the window's glass is cut to: the centre disc, which stays still, and the tiles,
+    /// which turn with the ring. Each turning ring layer gets a matching tile mask that moves with it.
+    let glassMask = CALayer()
+    private let restingTiles = CAShapeLayer()
+    private var tileMasks: [ObjectIdentifier: CAShapeLayer] = [:]
+
+    private func tilesMask() -> CAShapeLayer {
+        let l = CAShapeLayer()
+        l.frame = bounds
+        let g = geo
+        let path = CGMutablePath()
+        for i in 0..<g.count { path.addPath(g.sector(i).cgPathCompat) }
+        l.path = path
+        l.fillColor = NSColor.black.cgColor
+        l.actions = ["transform": NSNull(), "opacity": NSNull(), "hidden": NSNull(), "path": NSNull()]
+        return l
+    }
+
+    private func buildGlassMask() {
+        glassMask.frame = bounds
+        glassMask.actions = ["sublayers": NSNull(), "bounds": NSNull(), "position": NSNull()]
+        let disc = CAShapeLayer()
+        disc.frame = bounds
+        disc.path = geo.centreDisc.cgPathCompat
+        disc.fillColor = NSColor.black.cgColor
+        glassMask.addSublayer(disc)
+        let tiles = tilesMask()
+        restingTiles.frame = tiles.frame
+        restingTiles.path = tiles.path
+        restingTiles.fillColor = tiles.fillColor
+        restingTiles.actions = tiles.actions
+        glassMask.addSublayer(restingTiles)
+    }
+
+    /// Does the same to a ring layer and the tile mask that turns with it.
+    private func both(_ l: CALayer, _ change: (CALayer) -> Void) {
+        change(l)
+        if let m = tileMasks[ObjectIdentifier(l)] { change(m) }
+    }
+
     /// While turning, the ring is drawn by these layers instead of draw(_:), so it can rotate on the GPU.
-    private var ringHidden = false
+    private var ringHidden = false {
+        didSet {
+            CATransaction.begin()
+            CATransaction.setDisableActions(true)
+            restingTiles.isHidden = ringHidden
+            CATransaction.commit()
+        }
+    }
     private var oldRing: CALayer?
     private var turnAngle: CGFloat = 0
     private static let turnLimit: CGFloat = 38   // degrees the ring can be dragged
@@ -405,6 +456,9 @@ final class WheelView: NSView {
         l.contentsScale = window?.backingScaleFactor ?? 2
         l.actions = ["transform": NSNull(), "opacity": NSNull()]   // driven explicitly, never implicitly
         host.addSublayer(l)
+        let m = tilesMask()
+        glassMask.addSublayer(m)
+        tileMasks[ObjectIdentifier(l)] = m
         return l
     }
 
@@ -431,8 +485,8 @@ final class WheelView: NSView {
         turnAngle = limit * tanh(-dx * 0.45 / limit)
         CATransaction.begin()
         CATransaction.setDisableActions(true)
-        l.transform = rotation(turnAngle)
-        l.opacity = Float(1 - abs(turnAngle) / limit * 0.35)
+        let t = rotation(turnAngle), o = Float(1 - abs(turnAngle) / limit * 0.35)
+        both(l) { $0.transform = t; $0.opacity = o }
         CATransaction.commit()
     }
 
@@ -451,10 +505,12 @@ final class WheelView: NSView {
         let id = turnID
         CATransaction.begin()
         CATransaction.setCompletionBlock { [weak self] in if self?.turnID == id { self?.endTurn() } }
-        l.transform = CATransform3DIdentity
-        l.opacity = 1
-        l.add(spring, forKey: "settle")
-        l.add(fade, forKey: "fade")
+        both(l) {
+            $0.transform = CATransform3DIdentity
+            $0.opacity = 1
+            $0.add(spring, forKey: "settle")
+            $0.add(fade, forKey: "fade")
+        }
         CATransaction.commit()
     }
 
@@ -474,17 +530,17 @@ final class WheelView: NSView {
             an.fromValue = a; an.toValue = b; an.duration = t; an.timingFunction = ease
             an.beginTime = delay > 0 ? CACurrentMediaTime() + delay : 0
             an.fillMode = .backwards
-            l.add(an, forKey: key)
+            both(l) { $0.add(an, forKey: key) }
         }
         let id = turnID
         CATransaction.begin()
         CATransaction.setCompletionBlock { [weak self] in if self?.turnID == id { self?.endTurn() } }
         let outT = rotation(d * Self.turnAway, scale: 0.94)
-        old.transform = outT; old.opacity = 0
+        both(old) { $0.transform = outT; $0.opacity = 0 }
         animate(old, "transform", from, outT, 0.26)
         animate(old, "opacity", old.presentation()?.opacity ?? 1, 0, 0.2)
         let inFrom = rotation(-d * Self.turnAway, scale: 0.94)
-        new.transform = CATransform3DIdentity; new.opacity = 1
+        both(new) { $0.transform = CATransform3DIdentity; $0.opacity = 1 }
         animate(new, "transform", inFrom, CATransform3DIdentity, 0.36, delay: 0.04)
         animate(new, "opacity", 0, 1, 0.24, delay: 0.04)
         CATransaction.commit()
@@ -498,9 +554,11 @@ final class WheelView: NSView {
 
     /// Drops the turning layers and draws the ring normally again.
     func endTurn() {
-        oldRing?.removeFromSuperlayer()
+        for l in [oldRing].compactMap({ $0 }) + pendingRings {
+            l.removeFromSuperlayer()
+            tileMasks.removeValue(forKey: ObjectIdentifier(l))?.removeFromSuperlayer()
+        }
         oldRing = nil
-        pendingRings.forEach { $0.removeFromSuperlayer() }
         pendingRings = []
         turnAngle = 0
         if ringHidden { ringHidden = false; needsDisplay = true }
@@ -515,7 +573,7 @@ final class WheelView: NSView {
 
         let c = g.center, r = g.innerRadius
         if let page, submenu == nil, mode == .click { drawPage(page, centre: c) }
-        let fg: NSColor = centreActive ? .white : ink
+        let fg: NSColor = centreActive ? Brand.onAccent : ink
         let sub: NSColor = centreActive ? .white.withAlphaComponent(0.85) : inkMuted
         if let parent = submenu {
             drawSymbol("chevron.backward", size: 14, weight: .semibold, color: fg, at: NSPoint(x: c.x, y: c.y + 12))
@@ -565,12 +623,18 @@ final class WheelView: NSView {
         let r = 141 * g.scale   // label centre radius from the kit
         let rad = angle * .pi / 180
         let p = NSPoint(x: g.center.x + cos(rad) * r, y: g.center.y + sin(rad) * r)
-        let color: NSColor = !s.enabled ? ink.withAlphaComponent(0.35) : (highlighted ? .white : ink)
+        let color: NSColor = !s.enabled ? ink.withAlphaComponent(0.35) : (highlighted ? Brand.onAccent : ink)
         let iconColor = color
         // Icon, title (1–2 lines) and note stacked as one block centred on the tile.
         let titleFont = NSFont.systemFont(ofSize: 12, weight: .medium)
         let titleWidth: CGFloat = 112
-        let titleH = textHeight(s.title, font: titleFont, width: titleWidth, lines: 2)
+        // Number keys are active only in click mode, so badges appear only there. The badge sits
+        // beside the title, and the title wraps next to it instead of being cut off.
+        let badged = mode == .click
+        let badgeW: CGFloat = 14, badgeGap: CGFloat = 6
+        let textWidth = badged ? titleWidth - badgeW - badgeGap : titleWidth
+        let titleSize = textSize(s.title, font: titleFont, width: textWidth, lines: 3)
+        let titleH = titleSize.height
         let iconH: CGFloat = 24, gap: CGFloat = 5, noteH: CGFloat = s.note == nil ? 0 : 14
         let extraH: CGFloat = s.kind.opensRing ? 12 : 0
         let total = iconH + gap + titleH + noteH + extraH
@@ -578,23 +642,24 @@ final class WheelView: NSView {
         drawSymbol(s.icon.isEmpty ? "bolt.fill" : s.icon, size: 22, weight: .regular, color: iconColor, at: NSPoint(x: p.x, y: y - iconH / 2))
         y -= iconH + gap
         let titleRect = NSRect(x: p.x - titleWidth / 2, y: y - titleH, width: titleWidth, height: titleH)
-        if mode == .click, titleH < 20 {
-            // Number keys are active only in click mode, so badges appear only there.
+        if badged {
             let number = String(index + 1)
-            let measured = (s.title as NSString).size(withAttributes: [.font: titleFont]).width
-            let groupWidth = min(measured, titleWidth - 22) + 22
-            let badge = NSRect(x: p.x - groupWidth / 2, y: titleRect.midY - 7, width: 14, height: 14)
+            // Wrap at the same width it was measured at, then centre badge + visible text as one group.
+            let textW = min(titleSize.width, textWidth)
+            let groupWidth = badgeW + badgeGap + textW
+            let badge = NSRect(x: p.x - groupWidth / 2, y: titleRect.midY - 7, width: badgeW, height: 14)
+            let textMid = badge.maxX + badgeGap + textW / 2
             color.withAlphaComponent(0.12).setFill()
             NSBezierPath(roundedRect: badge, xRadius: 3, yRadius: 3).fill()
             drawText(number, in: badge, font: .monospacedDigitSystemFont(ofSize: 10, weight: .medium), color: color, lines: 1)
-            drawText(s.title, in: NSRect(x: badge.maxX + 6, y: titleRect.minY, width: groupWidth - 20, height: titleH), font: titleFont, color: color, lines: 1)
+            drawText(s.title, in: NSRect(x: textMid - textWidth / 2, y: titleRect.minY, width: textWidth, height: titleH), font: titleFont, color: color, lines: 3)
         } else {
-            drawText(s.title, in: titleRect, font: titleFont, color: color, lines: 2)
+            drawText(s.title, in: titleRect, font: titleFont, color: color, lines: 3)
         }
         y -= titleH
         if let note = s.note {
             drawText(note, in: NSRect(x: p.x - 48, y: y - noteH, width: 96, height: noteH),
-                     font: .systemFont(ofSize: 9, weight: .medium), color: highlighted ? .white : NSColor.systemOrange, lines: 1)
+                     font: .systemFont(ofSize: 9, weight: .medium), color: highlighted ? Brand.onAccent : NSColor.systemOrange, lines: 1)
             y -= noteH
         }
         if s.kind.opensRing {
@@ -602,12 +667,17 @@ final class WheelView: NSView {
         }
     }
 
-    private func textHeight(_ s: String, font: NSFont, width: CGFloat, lines: Int) -> CGFloat {
+    /// The size `s` takes when wrapped to `width`, at most `lines` lines.
+    private func textSize(_ s: String, font: NSFont, width: CGFloat, lines: Int) -> NSSize {
+        // Same wrapping as drawText, so the measured width matches the lines that get drawn.
         let para = NSMutableParagraphStyle()
+        para.alignment = .center
+        para.lineBreakMode = .byWordWrapping
+        para.lineBreakStrategy = .standard
         para.lineHeightMultiple = 0.95
         let r = NSAttributedString(string: s, attributes: [.font: font, .paragraphStyle: para])
             .boundingRect(with: NSSize(width: width, height: CGFloat(lines) * font.pointSize * 1.3), options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine])
-        return ceil(r.height) + 1
+        return NSSize(width: r.width, height: ceil(r.height) + 1)
     }
 
     private func drawSymbol(_ name: String, size: CGFloat, weight: NSFont.Weight, color: NSColor, at p: NSPoint) {
@@ -640,6 +710,7 @@ final class WheelView: NSView {
         let para = NSMutableParagraphStyle()
         para.alignment = .center
         para.lineBreakMode = .byWordWrapping   // truncatesLastVisibleLine adds the ellipsis
+        para.lineBreakStrategy = .standard
         para.lineHeightMultiple = 0.95
         let str = NSAttributedString(string: s, attributes: [.font: font, .foregroundColor: color, .paragraphStyle: para])
         let opts: NSString.DrawingOptions = [.usesLineFragmentOrigin, .truncatesLastVisibleLine]
@@ -715,7 +786,22 @@ final class WheelView: NSView {
 
     override func mouseUp(with event: NSEvent) {
         guard mode == .click else { return }
+        if event.modifierFlags.contains(.control) { return }   // Control-click is a right-click (mouseDown)
         activate(index(at: convert(event.locationInWindow, from: nil)))
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        if event.modifierFlags.contains(.control) { rightMouseDown(with: event) }
+    }
+
+    /// Right-click a slot to change what it shows. Only in click mode: during a drag the button is held.
+    override func rightMouseDown(with event: NSEvent) {
+        guard mode == .click, submenu == nil else { return }
+        let p = convert(event.locationInWindow, from: nil)
+        guard let i = index(at: p), i >= 0, i < ring.count else { return }
+        hovered = i
+        needsDisplay = true
+        controller?.rightClicked(i, in: self, at: p)
     }
 
     // MARK: VoiceOver
@@ -819,4 +905,23 @@ final class WheelView: NSView {
 private final class WheelSlotElement: NSAccessibilityElement {
     var onPress: (() -> Void)?
     override func accessibilityPerformPress() -> Bool { onPress?(); return onPress != nil }
+}
+
+extension NSBezierPath {
+    /// `cgPath` is macOS 14+; this works on 13.
+    var cgPathCompat: CGPath {
+        let path = CGMutablePath()
+        var pts = [NSPoint](repeating: .zero, count: 3)
+        for i in 0..<elementCount {
+            switch element(at: i, associatedPoints: &pts) {
+            case .moveTo: path.move(to: pts[0])
+            case .lineTo: path.addLine(to: pts[0])
+            case .curveTo, .cubicCurveTo: path.addCurve(to: pts[2], control1: pts[0], control2: pts[1])
+            case .quadraticCurveTo: path.addQuadCurve(to: pts[1], control: pts[0])
+            case .closePath: path.closeSubpath()
+            @unknown default: break
+            }
+        }
+        return path
+    }
 }

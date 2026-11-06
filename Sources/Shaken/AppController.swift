@@ -44,12 +44,18 @@ final class AppController: NSObject, WheelDelegate, ChipDelegate, ShelfTrayDeleg
 
     /// Layout is computed once per drag so slots never move mid-drag (R5).
     var cachedLayout: (changeCount: Int, slots: [ResolvedSlot], summary: String)?
+    /// The kind of item the wheel last opened for, so Settings › Commands starts on that wheel.
+    var lastKind: KindKey?
 
     static let welcomeShownKey = "welcomeShown"
     static let lastUpdateCheckKey = "lastUpdateCheck"
     var welcomeWindow: WelcomeWindowController?
 
     func start() {
+        Brand.look = { [store] in
+            let s = store.settings
+            return (s.glassTint, s.glassTintHex, s.glassTintStrength)
+        }
         ShakenPaths.ensure()
         cleanInbox()
         shelf.cleanOrphans()
@@ -139,6 +145,7 @@ final class AppController: NSObject, WheelDelegate, ChipDelegate, ShelfTrayDeleg
         } else {
             let payload = DragReader.preview(pb)
             guard !payload.isEmpty else { return }
+            lastKind = payload.kindKey
             let slots = fillSwitchers(ActionResolver.layout(payload: payload, actions: registry.actions, settings: store.settings),
                                       canDrop: payload.items.contains { [.file, .folder, .promise].contains($0.kind) })
             layout = (pb.changeCount, slots, payload.summary)
@@ -171,6 +178,7 @@ final class AppController: NSObject, WheelDelegate, ChipDelegate, ShelfTrayDeleg
         let actions = clickSource == .clipboard ? registry.actions.filter { !$0.onlyCopiesText } : registry.actions
         clickPayload = payload
         clickActions = actions
+        if !payload.isEmpty { lastKind = payload.kindKey }
         clickSummary = summary
         // Pages: the main wheel, your extra wheels, each app's wheel, then running apps. Start on the front app's own wheel.
         let front = NSWorkspace.shared.frontmostApplication?.bundleIdentifier
@@ -234,10 +242,20 @@ final class AppController: NSObject, WheelDelegate, ChipDelegate, ShelfTrayDeleg
             $0.activationPolicy == .regular && $0.bundleIdentifier != Bundle.main.bundleIdentifier && $0.bundleURL != nil
         }
         let front = NSWorkspace.shared.frontmostApplication?.bundleIdentifier
-        let rank = Dictionary(recentApps.enumerated().map { ($1, $0) }, uniquingKeysWith: { a, _ in a })
+        // Most recent first: apps switched to since Shaken started, then the rest by how close to the
+        // front their windows are (covers apps used before Shaken started), then everything else.
+        let recent = Dictionary(recentApps.enumerated().map { ($1, $0) }, uniquingKeysWith: { a, _ in a })
+        let stack = Dictionary(Self.windowStackOrder().enumerated().map { ($1, $0) }, uniquingKeysWith: { a, _ in a })
+        func rank(_ a: NSRunningApplication) -> Int {
+            if let r = recent[a.bundleIdentifier ?? ""] { return r }
+            if let z = stack[a.processIdentifier] { return 10_000 + z }
+            return Int.max
+        }
         let apps = running
             .filter { $0.bundleIdentifier != front || canDrop }
-            .sorted { (rank[$0.bundleIdentifier ?? ""] ?? Int.max) < (rank[$1.bundleIdentifier ?? ""] ?? Int.max) }
+            .enumerated()
+            .sorted { (rank($0.element), $0.offset) < (rank($1.element), $1.offset) }
+            .map(\.element)
             .prefix(ShakenSettings.maxChildren)
         let children = apps.map { a in
             ResolvedSlot(id: "switch-\(a.processIdentifier)", kind: .app, title: a.localizedName ?? "", icon: a.bundleURL!.path,
@@ -250,6 +268,19 @@ final class AppController: NSObject, WheelDelegate, ChipDelegate, ShelfTrayDeleg
             r.enabled = s.enabled && !children.isEmpty
             return r
         }
+    }
+
+    /// App process ids in the order their windows are stacked on screen, front first. Needs no
+    /// permission: only the owner of each window is read, not its title or contents.
+    static func windowStackOrder() -> [pid_t] {
+        guard let info = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]] else {
+            return []
+        }
+        var seen = Set<pid_t>(), order: [pid_t] = []
+        for w in info where (w[kCGWindowLayer as String] as? Int) == 0 {
+            if let pid = w[kCGWindowOwnerPID as String] as? pid_t, seen.insert(pid).inserted { order.append(pid) }
+        }
+        return order
     }
 
     func closeWheel() {

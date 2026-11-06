@@ -598,7 +598,8 @@ struct SlotFields: View {
                 ForEach(allowed, id: \.self) { Text(kindTitle($0)).tag($0) }
             }
             if slot.kind == .auto {
-                Text(L("Filled with a command that fits what you're dragging.")).font(.caption).foregroundStyle(.secondary)
+                Text(L("Filled with a command that fits what you're dragging. Choose which one in the Commands tab, or right-click the slot on the wheel."))
+                    .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             }
             if slot.kind != .auto && slot.kind != .empty {
                 TextField(L("Name"), text: $slot.title, prompt: Text(L("Automatic")))
@@ -828,9 +829,9 @@ struct SlotBubble: View {
     var body: some View {
         VStack(spacing: 3) {
             SlotIcon(name: icon)
-                .foregroundStyle(isSelected ? Color.white : (slot.kind == .empty ? Color.secondary : Brand.accentColor))
+                .foregroundStyle(isSelected ? Brand.onAccentColor : (slot.kind == .empty ? Color.secondary : Brand.accentColor))
             Text(title).font(.system(size: 10, weight: .medium)).lineLimit(2).multilineTextAlignment(.center)
-                .foregroundStyle(isSelected ? Color.white : (slot.kind == .empty ? Color.secondary : Color.primary))
+                .foregroundStyle(isSelected ? Brand.onAccentColor : (slot.kind == .empty ? Color.secondary : Color.primary))
         }
         .frame(width: 80, height: 62)
     }
@@ -1091,44 +1092,54 @@ struct ExcludedApps: View {
 
 // MARK: - Commands (R5, R8)
 
+/// Commands per kind of dragged item, edited on the wheel itself: pick a slot, then the command it shows.
 struct ActionsTab: View {
     @EnvironmentObject var model: SettingsModel
     @State private var kind: KindKey = .image
+    @State private var selected: String?
+    @State private var startedOnLastKind = false
 
-    var ordered: [ActionManifest] {
-        ActionResolver.ordered(for: ActionResolver.samplePayload(for: kind), actions: model.actions, settings: model.settings, includeHidden: true)
+    var payload: DragPayload { ActionResolver.samplePayload(for: kind) }
+
+    /// Every command that works on this kind, hidden ones too.
+    var commands: [ActionManifest] {
+        ActionResolver.ordered(for: payload, actions: model.actions, settings: model.settings, includeHidden: true)
+    }
+
+    /// What the main wheel shows while dragging this kind.
+    var resolved: [ResolvedSlot] {
+        ActionResolver.layout(payload: payload, actions: model.actions, settings: model.settings)
+    }
+
+    var previewSlots: [Slot] {
+        resolved.map { r in
+            Slot(id: r.id, kind: r.kind, title: r.kind == .empty ? L("Nothing") : r.title, icon: r.icon, target: r.target)
+        }
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
                 Picker(L("When dragging"), selection: $kind) {
-                    ForEach(KindKey.allCases.filter { $0 != .none }, id: \.self) { Text($0.title).tag($0) }
+                    ForEach(KindKey.allCases.filter { $0 != .none && $0 != .jpeg }, id: \.self) { Text($0.title).tag($0) }
                 }
                 .frame(maxWidth: 320)
                 Spacer()
-                Button(L("Reset Order")) { model.update { $0.kindPreferences[kind.rawValue] = nil } }
+                Button(L("Reset to Defaults")) { model.update { $0.kindPreferences[kind.rawValue] = nil } }
             }
-            Text(L("Suggested slots are filled from the top of this list. Untick to hide a command for this kind."))
+            Text(L("This is the wheel you get when you drag this kind of item. Click a slot, then pick the command it shows. Dragging two or more items at once uses Several items."))
+                .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            Text(L("Tip: open the wheel with your shortcut and right-click a slot to change it right there."))
                 .font(.caption).foregroundStyle(.secondary)
-            List {
-                ForEach(Array(ordered.enumerated()), id: \.element.id) { i, a in
-                    HStack {
-                        Toggle("", isOn: Binding(get: { !model.settings.preference(for: kind).hidden.contains(a.id) },
-                                                 set: { on in setHidden(a.id, !on) })).labelsHidden()
-                        Image(systemName: a.icon).frame(width: 20)
-                        VStack(alignment: .leading) {
-                            Text(a.displayName)
-                            Text(sourceLabel(a)).font(.caption2).foregroundStyle(.secondary)
-                        }
-                        if !a.missingRequirements().isEmpty {
-                            Text(L("Install: %@", a.installHint)).font(.caption).foregroundStyle(.orange)
-                        }
-                        Spacer()
-                        Button { move(i, -1) } label: { Image(systemName: "chevron.up") }.buttonStyle(.borderless).disabled(i == 0)
-                        Button { move(i, 1) } label: { Image(systemName: "chevron.down") }.buttonStyle(.borderless).disabled(i == ordered.count - 1)
-                    }
+            Divider()
+            HStack(alignment: .top, spacing: 24) {
+                VStack {
+                    WheelPreview(slots: previewSlots, selected: $selected) { a, b in swapSlots(a, b) }
+                    Text(L("Drag one slot onto another to swap them."))
+                        .font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.center).frame(width: 280)
                 }
+                Divider()
+                detail.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }
             HStack {
                 Text(L("Shrink below"))
@@ -1149,6 +1160,99 @@ struct ActionsTab: View {
                 }
             }
         }
+        .onAppear {
+            // Start on what was dragged last, so the wheel here is the one you just saw.
+            if !startedOnLastKind {
+                startedOnLastKind = true
+                if let k = model.app.lastKind, k != .none, k != .jpeg { kind = k }
+            }
+            if selected == nil { selected = firstSuggested() }
+        }
+        .onChange(of: kind) { _ in if selected == nil { selected = firstSuggested() } }
+    }
+
+    @ViewBuilder var detail: some View {
+        let slots = model.settings.slots
+        if let id = selected, let i = slots.firstIndex(where: { $0.id == id }) {
+            if let m = ActionResolver.suggestedIndex(ofSlot: i, in: slots) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(L("Slot %@", String(i + 1))).font(.headline)
+                    Text(L("Pick the command this slot shows."))
+                        .font(.caption).foregroundStyle(.secondary)
+                    List {
+                        ForEach(commands) { a in row(a, slot: i, suggested: m) }
+                    }
+                }
+            } else {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text(L("Slot %@", String(i + 1))).font(.headline)
+                    Text(L("This slot always shows “%@”. Change it in the Wheel tab, or let it show a command here instead.",
+                           SlotBubble(slot: slots[i], isSelected: false).title))
+                        .foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                    Button(L("Show a Command Here")) {
+                        model.update { s in if s.slots.indices.contains(i) { s.slots[i] = Slot(id: s.slots[i].id, kind: .auto) } }
+                    }
+                }
+            }
+        } else {
+            Text(L("Pick a slot to change it."))
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
+
+    func row(_ a: ActionManifest, slot i: Int, suggested m: Int) -> some View {
+        let shownAt = resolved.firstIndex { $0.actionID == a.id }
+        let pinned = ActionResolver.pinnedActionIDs(model.settings.slots).contains(a.id)
+        let here = shownAt == i
+        return Button {
+            guard !here else { return }
+            model.update { s in ActionResolver.place(a.id, inSlot: i, for: kind, actions: model.actions, settings: &s) }
+        } label: {
+            HStack {
+                SlotIcon(name: a.icon, size: 14).frame(width: 20)
+                VStack(alignment: .leading) {
+                    Text(a.displayName)
+                    Text(sourceLabel(a)).font(.caption2).foregroundStyle(.secondary)
+                }
+                if !a.missingRequirements().isEmpty {
+                    Text(L("Install: %@", a.installHint)).font(.caption).foregroundStyle(.orange)
+                }
+                Spacer()
+                if here {
+                    Image(systemName: "checkmark").font(.body.weight(.semibold)).foregroundStyle(Brand.accentColor)
+                } else if pinned {
+                    Text(L("Set in Wheel tab")).font(.caption).foregroundStyle(.secondary)
+                } else if let k = shownAt {
+                    Text(L("Slot %@", String(k + 1))).font(.caption).foregroundStyle(.secondary)
+                }
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        // The current choice is highlighted, not greyed out: greyed reads as "can't use".
+        .listRowBackground(here ? Brand.accentColor.opacity(0.16) : Color.clear)
+        .disabled(pinned)
+        .accessibilityValue(here ? L("In this slot") : pinned ? L("Set in Wheel tab")
+                            : shownAt.map { L("In slot %@", String($0 + 1)) } ?? "")
+        .accessibilityAddTraits(here ? .isSelected : [])
+        .help(here ? L("Shown in this slot") : shownAt != nil ? L("Swaps it with what this slot shows") : L("Shows it in this slot"))
+    }
+
+    func firstSuggested() -> String? {
+        model.settings.slots.first { $0.kind == .auto }?.id ?? model.settings.slots.first?.id
+    }
+
+    /// Two Suggested slots swap their commands; anything else swaps the slots on the main wheel.
+    func swapSlots(_ a: String, _ b: String) {
+        let slots = model.settings.slots
+        guard let i = slots.firstIndex(where: { $0.id == a }), let j = slots.firstIndex(where: { $0.id == b }) else { return }
+        if let mj = ActionResolver.suggestedIndex(ofSlot: j, in: slots), ActionResolver.suggestedIndex(ofSlot: i, in: slots) != nil,
+           let id = resolved[i].actionID {
+            model.update { s in ActionResolver.place(id, inSlot: j, for: kind, actions: model.actions, settings: &s) }
+        } else {
+            model.update { s in s.slots.swapAt(i, j) }
+        }
     }
 
     func sourceLabel(_ a: ActionManifest) -> String {
@@ -1156,27 +1260,6 @@ struct ActionsTab: View {
         case .builtin: return L("Built in")
         case .local: return L("Your command") + " · " + (a.directory?.lastPathComponent ?? "")
         case .pack(let n): return L("Pack: %@", n)
-        }
-    }
-
-    func setHidden(_ id: String, _ hide: Bool) {
-        model.update { s in
-            var p = s.preference(for: kind)
-            p.hidden.removeAll { $0 == id }
-            if hide { p.hidden.append(id) }
-            s.kindPreferences[kind.rawValue] = p
-        }
-    }
-
-    func move(_ i: Int, _ d: Int) {
-        var ids = ordered.map(\.id)
-        let j = i + d
-        guard ids.indices.contains(j) else { return }
-        ids.swapAt(i, j)
-        model.update { s in
-            var p = s.preference(for: kind)
-            p.order = ids
-            s.kindPreferences[kind.rawValue] = p
         }
     }
 }
@@ -1203,7 +1286,7 @@ struct PacksTab: View {
                     Section {
                         ForEach(model.actions.filter { $0.source == .pack(pack.name) }) { a in
                             HStack {
-                                Image(systemName: a.icon).frame(width: 20)
+                                SlotIcon(name: a.icon, size: 14).frame(width: 20)
                                 Text(a.displayName)
                                 Spacer()
                                 if PackManager.isApproved(a, settings: model.settings) {
@@ -1240,6 +1323,16 @@ struct GeneralTab: View {
 
     var version: String { Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "dev" }
 
+    var customColor: Binding<Color> {
+        Binding(get: {
+            let c = GlassTint.rgb(fromHex: model.settings.glassTintHex) ?? (0.49, 0.54, 0.93)
+            return Color(.sRGB, red: c.r, green: c.g, blue: c.b)
+        }, set: { color in
+            guard let c = NSColor(color).usingColorSpace(.sRGB) else { return }
+            model.update { $0.glassTintHex = GlassTint.hex(r: Double(c.redComponent), g: Double(c.greenComponent), b: Double(c.blueComponent)) }
+        })
+    }
+
     var body: some View {
         Form {
             Toggle(L("Open at login"), isOn: Binding(get: { launchAtLogin }, set: { v in model.app.launchAtLogin = v; launchAtLogin = model.app.launchAtLogin }))
@@ -1251,10 +1344,57 @@ struct GeneralTab: View {
                 }
             }
             LabeledContent(L("License"), value: "MIT")
+            Section(L("Glass")) {
+                Picker(L("Color"), selection: model.binding(\.glassTint)) {
+                    Text(L("Mac accent color")).tag(GlassTint.system)
+                    Text(L("Shaken blue")).tag(GlassTint.shaken)
+                    Text(L("Custom")).tag(GlassTint.custom)
+                }
+                if model.settings.glassTint == .system {
+                    Text(L("Follows the accent color in System Settings › Appearance."))
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                if model.settings.glassTint == .custom {
+                    ColorPicker(L("Custom color"), selection: customColor, supportsOpacity: false)
+                }
+                LabeledContent(L("Tint")) {
+                    Slider(value: model.binding(\.glassTintStrength), in: 0...1) {
+                        EmptyView()
+                    } minimumValueLabel: {
+                        Text(L("Grey")).font(.caption)
+                    } maximumValueLabel: {
+                        Text(L("Strong")).font(.caption)
+                    }
+                }
+                LabeledContent(L("Preview")) {
+                    GlassSwatch(look: "\(model.settings.glassTint.rawValue)\(model.settings.glassTintHex)\(model.settings.glassTintStrength)")
+                        .frame(width: 210, height: 56)
+                }
+            }
             Text(L("Shaken watches the mouse with a standard monitor and only reads what you drag after you shake. Snippets, keyboard shortcuts and a few system controls need Accessibility; nothing else needs special permission."))
                 .font(.caption).foregroundStyle(.secondary)
         }
         .formStyle(.grouped)
         .onAppear { launchAtLogin = model.app.launchAtLogin }
+    }
+}
+
+/// Two wheel tiles drawn with the real glass code: one plain, one selected.
+struct GlassSwatch: NSViewRepresentable {
+    /// Changes whenever the glass setting does, so the swatch redraws.
+    let look: String
+    func makeNSView(context: Context) -> SwatchView { SwatchView() }
+    func updateNSView(_ v: SwatchView, context: Context) { v.needsDisplay = true }
+
+    final class SwatchView: NSView {
+        override func draw(_ dirtyRect: NSRect) {
+            let dark = effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+            let w = (bounds.width - 10) / 2
+            for (i, selected) in [false, true].enumerated() {
+                let r = NSRect(x: CGFloat(i) * (w + 10), y: 0, width: w, height: bounds.height).insetBy(dx: 0.5, dy: 0.5)
+                Brand.drawGlass(NSBezierPath(roundedRect: r, xRadius: 12, yRadius: 12), dark: dark, selected: selected)
+            }
+        }
+        override func viewDidChangeEffectiveAppearance() { needsDisplay = true }
     }
 }

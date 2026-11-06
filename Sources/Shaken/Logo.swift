@@ -3,7 +3,7 @@ import AppKit
 /// A wheel drawing used as decoration (installer background) and as a fallback menu bar icon.
 /// The app icon and menu bar icon themselves come from the asset kit (Resources/).
 enum Logo {
-    static var accent: NSColor { Brand.accent }
+    static var accent: NSColor { Brand.brandAccent }   // the installer and icon keep Shaken blue
 
     /// Draws the mark into `rect` (square). `template` draws a single-colour silhouette for the menu bar.
     static func drawMark(in rect: NSRect, tile: NSColor, hot: NSColor, core: NSColor, shake: NSColor?) {
