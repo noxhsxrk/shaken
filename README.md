@@ -213,7 +213,7 @@ and selecting text never trigger it.
 | 1 – 6 | Pick that slot at once. Each slot shows its number (1 is the top, then clockwise) |
 | Delete | Leave a submenu |
 | ⌘← ⌘→ (or Tab, ⇧Tab) | Switch between the main wheel, your other wheels, app wheels and *Running apps* |
-| Two-finger swipe sideways | The same, on a trackpad or Magic Mouse. The wheel follows your fingers and slides to the next one; let go early and it springs back |
+| Two-finger swipe sideways | The same, on a trackpad or Magic Mouse. The ring of slots turns with your fingers like a dial and the next wheel turns in; let go early and it springs back |
 | Esc | Close |
 
 These keys belong to Shaken only while the wheel is open.
