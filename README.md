@@ -1,6 +1,36 @@
-# Shaken
+<p align="center">
+  <img src="docs/images/app-icon.png" width="128" alt="Shaken app icon: a six-slice wheel with one slice lit">
+</p>
 
-Shake mid-drag, pick a command, drag the result onward.
+<h1 align="center">Shaken</h1>
+
+<p align="center">
+  <strong>Shake mid-drag, pick a command, drag the result onward.</strong><br>
+  A radial launcher and drag toolkit for the Mac menu bar.
+</p>
+
+<p align="center">
+  <a href="https://github.com/noxhsxrk/shaken/releases"><img src="https://img.shields.io/badge/macOS-13%2B-1f2328?logo=apple&logoColor=white" alt="macOS 13+"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-F2613F" alt="MIT license"></a>
+  <img src="https://img.shields.io/badge/Swift-6-F05138?logo=swift&logoColor=white" alt="Swift 6">
+  <img src="https://img.shields.io/badge/price-free-2ea44f" alt="Free">
+  <img src="https://img.shields.io/badge/account-none%20needed-6e7781" alt="No account needed">
+</p>
+
+<p align="center">
+  <a href="https://github.com/noxhsxrk/shaken/releases"><strong>Download</strong></a> ·
+  <a href="#a-short-walkthrough"><strong>Walkthrough</strong></a> ·
+  <a href="#what-a-slot-can-do"><strong>Slot types</strong></a> ·
+  <a href="#writing-a-command"><strong>Write a command</strong></a> ·
+  <a href="#roadmap"><strong>Roadmap</strong></a>
+</p>
+
+<p align="center">
+  Drag files, links and text · Convert and run commands mid-drag · Undo anything ·
+  Apps, Shortcuts, scripts, snippets and keys on one wheel · A wheel per app
+</p>
+
+---
 
 Shaken is a free, open-source menu-bar app for macOS. While you drag something (a photo, a PDF,
 a link, some text), give the mouse a quick shake. A six-slot wheel opens under the pointer.
@@ -128,7 +158,7 @@ When something fails, the chip says what went wrong in plain words and stays unt
 
 ## Install
 
-Download the DMG from Releases, drag Shaken to Applications and open it. A hand icon appears in
+Download the latest DMG from [Releases](https://github.com/noxhsxrk/shaken/releases), drag Shaken to Applications and open it. A hand icon appears in
 the menu bar. There is no Dock icon. Opening Shaken again shows Settings.
 
 To build from source you need Xcode installed, but you never have to open it:
@@ -137,15 +167,6 @@ To build from source you need Xcode installed, but you never have to open it:
 ./build.sh                    # build build/Shaken.app, quit the running copy, open the new one
 ./build.sh --no-open          # build only
 scripts/test.sh               # run the test suite
-scripts/make-dmg.sh           # build build/Shaken-<version>.dmg
-```
-
-To ship a DMG that opens without a Gatekeeper warning, you need an Apple Developer ID:
-
-```sh
-xcrun notarytool store-credentials shaken-notary --apple-id you@example.com --team-id TEAMID
-SIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)" NOTARY_PROFILE=shaken-notary \
-  VERSION=0.1.0 scripts/make-dmg.sh
 ```
 
 ---
@@ -405,7 +426,7 @@ Gesture detector -> Drag reader -> Action resolver -> Wheel overlay -> Job runne
   [`docs/CHECKLIST.md`](docs/CHECKLIST.md)
 - Tune the shake detector with real mouse and trackpad recordings. The current test traces are
   synthetic.
-- An app icon, a signed and notarized DMG, and a first public release
+- A signed and notarized DMG on Releases, and a first public release
 
 **Later**
 

@@ -5,6 +5,9 @@ import ShakenCore
 /// so the look can be checked without driving a real drag.
 enum Snapshot {
     static func runIfRequested() {
+        if let dir = ProcessInfo.processInfo.environment["SHAKEN_ICONSET"] {
+            do { try Logo.writeIconset(to: URL(fileURLWithPath: dir)); exit(0) } catch { print(error); exit(1) }
+        }
         guard let dir = ProcessInfo.processInfo.environment["SHAKEN_SNAPSHOT"] else { return }
         let out = URL(fileURLWithPath: dir, isDirectory: true)
         try? FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
@@ -18,6 +21,16 @@ enum Snapshot {
             let ap = NSAppearance(named: appearance)!
             wheel(images, summary: "2 images", mode: .drag, hover: 1, shelf: 0, ap, out.appendingPathComponent("wheel-drag-\(name).png"))
             wheel(images, summary: "2 images", mode: .drag, hover: -1, shelf: 0, ap, out.appendingPathComponent("wheel-centre-\(name).png"))
+            let menu = Logo.menuBarImage()
+            render(size: NSSize(width: 18, height: 18), ap, out.appendingPathComponent("menubar-\(name).png"), background: { b in
+                (ap.name == .darkAqua ? NSColor(white: 0.2, alpha: 1) : NSColor(white: 0.93, alpha: 1)).setFill(); b.fill()
+            }) { b in
+                // Tint the template the way the menu bar does.
+                let tinted = NSImage(size: b.size, flipped: false) { r in
+                    menu.draw(in: r); (ap.name == .darkAqua ? NSColor.white : NSColor.black).set(); r.fill(using: .sourceAtop); return true
+                }
+                tinted.draw(in: b)
+            }
             tray(ap, out.appendingPathComponent("tray-\(name).png"))
             chip(.failed("Can't read image “IMG_0001.HEIC”. The file may be damaged."), ap, out.appendingPathComponent("chip-failed-\(name).png"))
             chip(.running("Convert to JPG"), ap, out.appendingPathComponent("chip-running-\(name).png"))

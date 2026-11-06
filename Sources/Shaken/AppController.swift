@@ -556,7 +556,7 @@ final class AppController: NSObject, WheelDelegate, ChipDelegate, ShelfTrayDeleg
 
     private func setUpStatusItem() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-        statusItem.button?.image = NSImage(systemSymbolName: "hand.wave", accessibilityDescription: "Shaken")
+        statusItem.button?.image = Logo.menuBarImage()
         let menu = NSMenu()
         menu.delegate = self
         statusItem.menu = menu
