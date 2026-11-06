@@ -313,13 +313,16 @@ lists every script, Shortcut, snippet and key press in it, so you can see exactl
 do. A wheel made for one app offers to install as that app's wheel.
 
 **Gallery.** *Settings → Gallery* lists wheels and command packs shared by others, from
-[`gallery/index.json`](gallery/index.json). It starts with Media, Screenshots, Web search and
-System wheels. Adding one goes through the same review as any import. To share your own, see
+[`gallery/index.json`](gallery/index.json) (published on shaken.noxhsxrk.com). It starts with
+Media, Screenshots, Web search, System, Photo tools and File tools wheels. Adding one goes through the same review as any import. To share your own, see
 [`gallery/README.md`](gallery/README.md).
 
 **App switcher previews.** Turn on *Settings → Gesture → Show window previews* to see the
-highlighted app's front window beside the wheel. It needs Screen Recording permission and
-macOS 14 or later, and is off by default.
+highlighted app's front window beside the wheel. It needs Screen Recording permission and is off
+by default.
+
+**Quick Look.** Press the eye on a result chip, or double-click its picture, to look at the
+results in Quick Look. Videos and audio play right there.
 
 ---
 
@@ -331,17 +334,26 @@ macOS 14 or later, and is off by default.
 | One JPG | Shrink below size limit, Remove metadata, Make PDF, Open in Preview, Copy name |
 | One PDF | Split pages, Open in Preview, Copy name, Compress PDF |
 | Several items or a folder | Compress to ZIP, Merge into PDF (images and PDFs only), Copy name, Rename in bulk |
-| Any image (further down the list) | Resize to 1920 px, 1080 px or 50%, Convert to AVIF, Convert to WebP (needs `brew install webp`) |
-| A link | Open link, Copy link, Make QR code |
+| Any image (further down the list) | Resize to 1920 px, 1080 px or 50%, Convert to PNG, HEIC, AVIF or WebP (WebP needs `brew install webp`), Extract text, Copy text from image, Remove background (macOS 14+), Rotate right or left |
+| A video | Compress video (720p MP4), Extract audio (M4A) |
+| Any file | Copy path, Copy checksum (SHA-256) |
+| A link | Open link, Copy link, Make QR code, Download file |
 | Text | Save as .txt, Copy text |
+
+*Extract text* reads the words in a photo, screenshot or scanned PDF with the system's text
+recognition and saves them as a `.txt` you can drag on. *Copy text from image* puts them straight
+on the clipboard.
 
 **Where results go**
 
 - Next to the original, under a free name (`photo.jpg`, `photo 2.jpg`, …). Nothing is ever overwritten.
 - If there is no source folder (file promises, links, text), or the items come from different
   folders, results go to `~/Downloads`.
-- *Rename in bulk* asks for a name and renames the files in place as "Name 01", "Name 02"…
-  Undo puts the old names back.
+- *Rename in bulk* renames the files in place from a pattern, with a live preview of the new
+  names. Plain text gives "Name 01", "Name 02"…; the parts you can use are `{n}` (counter),
+  `{n:3}` (counter with 3 digits), `{name}` (the old name), `{date}` (when the photo was taken, or
+  the file was made), `{date:yyyyMMdd}` (any date format) and `{ext}`. For example
+  `{date} Trip {n}` gives "2026-11-06 Trip 01". Undo puts the old names back.
 - Work happens in a temporary folder. Files move into place only when every step succeeded, and
   the temporary folder is removed on error or cancel. You never get half a result.
 
@@ -485,14 +497,14 @@ Gesture detector -> Drag reader -> Action resolver -> Wheel overlay -> Job runne
 
 **Later**
 
-- More command packs in the gallery, and a way to rate them
-- Rename in bulk with patterns (dates, counters in other positions)
-- Video and audio results in the chip shown with a preview
-- Window previews for macOS 13
+- Command packs in the gallery, and a way to rate wheels and packs
+- Make a GIF or a video from several images
+- Text tools: translate, change case, count words
 
 **Done since the first release:** gallery, window previews, visual workflow editor, WebP and AVIF,
-resize presets, PDF compression, bulk rename, Shortcut and script results in the chip, and
-chaining commands from the chip.
+resize presets, PDF compression, bulk rename with patterns, Shortcut and script results in the
+chip, chaining commands from the chip, text recognition, background removal, video compression,
+Quick Look in the chip, and window previews on macOS 13.
 
 **Not planned**
 

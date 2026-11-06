@@ -2,6 +2,23 @@
 
 All notable changes to Shaken. Versions follow [Semantic Versioning](https://semver.org).
 
+## 0.3.0 - 2026-11-06
+
+### Added
+- **Extract text** and **Copy text from image**: reads the words in photos, screenshots and scanned PDFs.
+- **Remove background**: cuts the subject out onto a transparent PNG (macOS 14+).
+- **Rotate right** and **Rotate left**, **Convert to PNG** and **Convert to HEIC**.
+- **Compress video** to a 720p MP4, and **Extract audio** to M4A.
+- **Download file**: drag a link and get the file it points to.
+- **Copy path** and **Copy checksum** (SHA-256) for any file.
+- **Rename in bulk** with patterns: `{n}`, `{n:3}`, `{name}`, `{date}`, `{date:yyyyMMdd}`, `{ext}`, with buttons for each and a live preview. Taken numbers are skipped.
+- **Quick Look** from the result chip: the eye button or a double-click. Video and audio play, and get a play mark on the chip.
+- Window previews in the app switcher now work on macOS 13 too.
+- Two gallery wheels: **Photo tools** and **File tools**.
+
+### Changed
+- The gallery loads from shaken.noxhsxrk.com, so it works for everyone.
+
 ## 0.2.2 - 2026-11-06
 
 ### Changed
