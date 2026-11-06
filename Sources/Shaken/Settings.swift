@@ -396,58 +396,142 @@ struct WheelTab: View {
     }
 }
 
+/// Submenu items, or a workflow's steps drawn as a flow of cards: drag a card to reorder it,
+/// press its play button to try just that step, or Run All to try the whole thing.
 struct ChildrenEditor: View {
     @EnvironmentObject var model: SettingsModel
     let parent: Int
     let isWorkflow: Bool
     @Binding var selected: String?
+    @State private var dragging: String?
+    @State private var dropBefore: String?
 
     var children: [Slot] { model.editingSlots.indices.contains(parent) ? model.editingSlots[parent].children : [] }
+    var limit: Int { isWorkflow ? ShakenSettings.maxWorkflowSteps : ShakenSettings.maxChildren }
 
-    func move(_ j: Int, by d: Int) {
+    /// Moves the dragged item so it sits before `target` (or at the end when target is nil).
+    func move(_ id: String, before target: String?) {
         model.updateSlots { slots in
-            let k = j + d
-            guard slots[parent].children.indices.contains(j), slots[parent].children.indices.contains(k) else { return }
-            slots[parent].children.swapAt(j, k)
+            guard slots.indices.contains(parent), let from = slots[parent].children.firstIndex(where: { $0.id == id }) else { return }
+            let item = slots[parent].children.remove(at: from)
+            let to = target.flatMap { t in slots[parent].children.firstIndex { $0.id == t } } ?? slots[parent].children.count
+            slots[parent].children.insert(item, at: to)
         }
+    }
+
+    func add(_ kind: SlotKind) {
+        var slot = Slot(kind: kind)
+        if kind == .delay { slot.target = "1" }
+        if kind == .system { slot.target = SystemControl.mute.rawValue }
+        // Empty targets are cleaned to "Empty" on save, so the new item opens for editing straight away.
+        model.updateSlots { $0[parent].children.append(slot) }
+        selected = model.editingSlots[parent].children.last?.id
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Text(isWorkflow ? L("Steps, run in order") : L("Submenu items")).font(.subheadline.bold())
+                Text("\(children.count)/\(limit)").font(.caption).foregroundStyle(.secondary)
                 Spacer()
-                Button {
-                    model.updateSlots { $0[parent].children.append(Slot(kind: isWorkflow ? .app : .auto)) }
-                } label: { Image(systemName: "plus") }
-                    .disabled(children.count >= (isWorkflow ? ShakenSettings.maxWorkflowSteps : ShakenSettings.maxChildren))
-                    .help(L("Add item"))
+                if isWorkflow {
+                    Button { model.app.runFromSettings(model.editingSlots[parent]) } label: { Label(L("Run All"), systemImage: "play.fill") }
+                        .disabled(children.isEmpty)
+                }
+                Menu {
+                    ForEach(isWorkflow ? SlotKind.workflowSteps : SlotKind.wheelKinds.filter { !$0.isContainer }, id: \.self) { k in
+                        Button(kindTitle(k)) { add(k) }
+                    }
+                } label: { Label(L("Add"), systemImage: "plus") }
+                    .fixedSize()
+                    .disabled(children.count >= limit)
+            }
+            if children.isEmpty {
+                Text(isWorkflow ? L("Add the first step: an app to open, a link, a Shortcut, a script, keys to press…")
+                                : L("Add up to six items. Rest on the slot while dragging, or click it, to open them."))
+                    .font(.caption).foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .center).padding(.vertical, 18)
+                    .background(RoundedRectangle(cornerRadius: 10).strokeBorder(style: StrokeStyle(lineWidth: 1, dash: [4])).foregroundStyle(.quaternary))
             }
             ForEach(Array(children.enumerated()), id: \.element.id) { j, child in
-                DisclosureGroup(isExpanded: Binding(get: { selected == child.id }, set: { selected = $0 ? child.id : nil })) {
-                    SlotFields(slot: Binding(
-                        get: { model.editingSlots[parent].children.indices.contains(j) ? model.editingSlots[parent].children[j] : child },
-                        set: { v in model.updateSlots { if $0[parent].children.indices.contains(j) { $0[parent].children[j] = v } } }
-                    ), actions: model.actions, allowed: isWorkflow ? SlotKind.workflowSteps : SlotKind.wheelKinds.filter { !$0.isContainer })
-                    .padding(.leading, 8)
-                } label: {
-                    HStack {
-                        SlotIcon(name: SlotBubble(slot: child, isSelected: false).icon, size: 13)
-                        Text(isWorkflow ? "\(j + 1). " + SlotBubble(slot: child, isSelected: false).title : SlotBubble(slot: child, isSelected: false).title)
-                        Spacer()
-                        if isWorkflow {
-                            Button { move(j, by: -1) } label: { Image(systemName: "chevron.up") }
-                                .buttonStyle(.borderless).disabled(j == 0).help(L("Move up"))
-                            Button { move(j, by: 1) } label: { Image(systemName: "chevron.down") }
-                                .buttonStyle(.borderless).disabled(j == children.count - 1).help(L("Move down"))
-                        }
-                        Button(role: .destructive) {
-                            model.updateSlots { $0[parent].children.removeAll { $0.id == child.id } }
-                        } label: { Image(systemName: "minus.circle") }.buttonStyle(.borderless).help(L("Remove"))
+                VStack(spacing: 0) {
+                    if dropBefore == child.id {
+                        RoundedRectangle(cornerRadius: 2).fill(Color.accentColor).frame(height: 3).padding(.bottom, 4)
+                    }
+                    card(j, child)
+                    if isWorkflow && j < children.count - 1 {
+                        Image(systemName: "arrow.down").font(.system(size: 10, weight: .semibold))
+                            .foregroundStyle(.tertiary).padding(.vertical, 3)
                     }
                 }
+                .onDrop(of: [.plainText], isTargeted: Binding(get: { dropBefore == child.id }, set: { dropBefore = $0 ? child.id : nil })) { _ in
+                    if let d = dragging, d != child.id { move(d, before: child.id) }
+                    dragging = nil
+                    return true
+                }
+            }
+            if !children.isEmpty {
+                // Drop here to move an item to the end.
+                Color.clear.frame(height: 14)
+                    .overlay(alignment: .top) {
+                        if dropBefore == "end" { RoundedRectangle(cornerRadius: 2).fill(Color.accentColor).frame(height: 3) }
+                    }
+                    .onDrop(of: [.plainText], isTargeted: Binding(get: { dropBefore == "end" }, set: { dropBefore = $0 ? "end" : nil })) { _ in
+                        if let d = dragging { move(d, before: nil) }
+                        dragging = nil
+                        return true
+                    }
             }
         }
+    }
+
+    private func card(_ j: Int, _ child: Slot) -> some View {
+        let bubble = SlotBubble(slot: child, isSelected: false)
+        let expanded = selected == child.id
+        return VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 10) {
+                Image(systemName: "line.3.horizontal").foregroundStyle(.tertiary)
+                    .help(L("Drag to reorder"))
+                if isWorkflow {
+                    Text("\(j + 1)").font(.system(size: 11, weight: .bold)).foregroundStyle(.white)
+                        .frame(width: 20, height: 20).background(Circle().fill(Color.accentColor))
+                }
+                SlotIcon(name: bubble.icon, size: 14).frame(width: 24)
+                    .foregroundStyle(Color.accentColor)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(bubble.title).lineLimit(1)
+                    Text(kindTitle(child.kind)).font(.caption).foregroundStyle(.secondary)
+                }
+                Spacer()
+                if child.kind != .delay {
+                    Button { model.app.runFromSettings(child) } label: { Image(systemName: "play.circle") }
+                        .buttonStyle(.borderless).help(L("Try this step now"))
+                }
+                Button { selected = expanded ? nil : child.id } label: { Image(systemName: expanded ? "chevron.up" : "slider.horizontal.3") }
+                    .buttonStyle(.borderless).help(L("Edit"))
+                Button(role: .destructive) {
+                    model.updateSlots { $0[parent].children.removeAll { $0.id == child.id } }
+                } label: { Image(systemName: "trash") }.buttonStyle(.borderless).help(L("Remove"))
+            }
+            .padding(.horizontal, 10).padding(.vertical, 8)
+            .contentShape(Rectangle())
+            .onTapGesture { selected = expanded ? nil : child.id }
+            .onDrag {
+                dragging = child.id
+                return NSItemProvider(object: child.id as NSString)
+            }
+            if expanded {
+                Divider()
+                SlotFields(slot: Binding(
+                    get: { model.editingSlots[parent].children.indices.contains(j) ? model.editingSlots[parent].children[j] : child },
+                    set: { v in model.updateSlots { if $0[parent].children.indices.contains(j) { $0[parent].children[j] = v } } }
+                ), actions: model.actions, allowed: isWorkflow ? SlotKind.workflowSteps : SlotKind.wheelKinds.filter { !$0.isContainer })
+                .padding(8)
+            }
+        }
+        .background(RoundedRectangle(cornerRadius: 10).fill(Color.primary.opacity(dragging == child.id ? 0.03 : 0.06)))
+        .overlay(RoundedRectangle(cornerRadius: 10).stroke(expanded ? Color.accentColor.opacity(0.6) : Color.primary.opacity(0.08)))
+        .opacity(dragging == child.id ? 0.5 : 1)
     }
 }
 
