@@ -23,3 +23,19 @@ Run `SHAKEN_NETWORK_TESTS=1 scripts/test.sh` once before a release to include th
 | Every command | Each built-in command runs on a real file and gives a valid result | ✅ `EveryCommandTests`, `ClipboardCommandTests` and the suites above · ☐ Open in Preview, Open link |
 | Right-click | Menu names the kind, picking swaps only that slot, choice is saved | ✅ `scripts/smoke.sh` · ☐ menu and Esc by hand |
 | Switching wheels | Whole wheel turns; nothing left behind | ✅ `scripts/smoke.sh` · ☐ look by hand |
+
+## Releasing
+
+In order. Repos sit side by side: `shaken`, `shaken-site`, `homebrew-nox`.
+
+1. `scripts/test.sh` (once with `SHAKEN_NETWORK_TESTS=1`) and `scripts/smoke.sh`: all pass.
+2. Bump `VERSION` in `scripts/build-app.sh`, add the `CHANGELOG.md` entry, commit `chore: release X.Y.Z`.
+3. `scripts/make-dmg.sh` (with `SIGN_IDENTITY` and `NOTARY_PROFILE` once there's a Developer ID).
+4. Push, tag `vX.Y.Z`, and `gh release create vX.Y.Z build/Shaken-X.Y.Z.dmg` with the notes ending in
+   `SHA-256: <hash>`. The site and the updater read the checksum from that line.
+5. **Homebrew:** `scripts/bump-cask.sh`, then `git -C ../homebrew-nox push`. It sets `version` and
+   `sha256` in `Casks/shaken.rb` and refuses if the DMG on the release isn't the one you built.
+6. **Site:** in `shaken-site`, `scripts/sync-releases.sh`. Delete any DMG it lists as
+   "Not in any release", update version text in `public/index.html` if it names one, commit, then
+   `npx wrangler deploy`.
+7. If `docs/images` changed, `scripts/make-readme-gif.sh` for the GIFs.
