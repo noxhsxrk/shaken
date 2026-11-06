@@ -68,6 +68,16 @@ public enum ActionResolver {
         ]
     }
 
+    /// Why a slot can't run yet, or nil if it's complete.
+    public static func incomplete(_ s: Slot) -> String? {
+        let t = s.target.trimmingCharacters(in: .whitespacesAndNewlines)
+        if s.kind.needsTarget && t.isEmpty { return L("Not set up") }
+        if s.kind == .keys && KeyCombo(t) == nil { return L("Check the keys") }
+        if s.kind == .system && SystemControl(rawValue: t) == nil { return L("Not set up") }
+        if s.kind == .delay && Double(t) == nil { return L("Not set up") }
+        return nil
+    }
+
     /// - Parameter fallbacks: used, in order, for auto slots left over after the suggestions run out.
     /// - Parameter slots: the wheel to lay out; defaults to the main one (`settings.slots`).
     public static func layout(payload: DragPayload, actions: [ActionManifest], settings: ShakenSettings, fallbacks: [Slot] = [],
@@ -150,7 +160,8 @@ public enum ActionResolver {
             case .workflow:
                 if r.icon.isEmpty { r.icon = "list.bullet.rectangle" }
                 if r.title.isEmpty { r.title = L("Workflow") }
-                r.children = s.children.map(resolve).map { var c = $0; c.enabled = true; return c }
+                // Steps that aren't filled in yet are skipped when it runs.
+                r.children = s.children.filter { Self.incomplete($0) == nil }.map(resolve).map { var c = $0; c.enabled = true; return c }
                 r.enabled = payload.isEmpty && !r.children.isEmpty
             case .shell, .applescript:
                 if r.title.isEmpty { r.title = s.kind == .shell ? L("Shell script") : L("AppleScript") }
@@ -169,6 +180,10 @@ public enum ActionResolver {
                 if r.icon.isEmpty { r.icon = "square.on.square" }
                 if r.title.isEmpty { r.title = L("Switch app") }
                 r.enabled = payload.isEmpty || hasFiles
+            }
+            if r.enabled, let problem = Self.incomplete(s) {
+                r.enabled = false
+                r.note = problem
             }
             return r
         }

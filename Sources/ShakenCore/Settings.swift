@@ -227,14 +227,11 @@ public struct ShakenSettings: Codable, Equatable, Sendable {
             } else {
                 x.children = []
             }
-            if x.kind.needsTarget && x.target.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                x.kind = .empty
-            }
-            if x.kind == .keys && KeyCombo(x.target) == nil { x.kind = .empty }
-            if x.kind == .system && SystemControl(rawValue: x.target) == nil { x.kind = .empty }
+            // A slot that isn't filled in yet (no app chosen, keys half typed) keeps its kind, so
+            // Settings can be edited step by step; the wheel shows it disabled until it's complete.
             if x.kind == .delay {
                 if depth == 0 { x.kind = .empty }
-                else if let d = Double(x.target) { x.target = String(min(max(d, 0.1), 30)) } else { x.kind = .empty }
+                else if let d = Double(x.target) { x.target = String(min(max(d, 0.1), 30)) }
             }
             return x
         }

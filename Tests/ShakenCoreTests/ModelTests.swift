@@ -169,7 +169,9 @@ struct SettingsTests {
         #expect(v.slots[0].children.count == 6)
         #expect(v.slots[0].children.allSatisfy { $0.kind == .empty })
         #expect(v.slots[1].id != "a")
-        #expect(v.slots[1].kind == .empty)
+        // An app slot with no app chosen yet stays an app slot, disabled until it's set up.
+        #expect(v.slots[1].kind == .app)
+        #expect(ActionResolver.layout(payload: DragPayload([]), actions: [], settings: v)[1].enabled == false)
         #expect(v.gesture.sensitivity == 5)
         #expect(v.shrinkTargetKB == 50)
         #expect(Set(v.slots.map(\.id)).count == 6)

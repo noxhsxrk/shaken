@@ -37,7 +37,10 @@ import Testing
             Slot(kind: .keys, target: "nonsense+"),
         ])
         let v = s.validated()
-        #expect(v.slots[0].children.map(\.kind) == [.app, .keys])
+        // Submenus can't go in a workflow; an unfinished step stays (so it can be edited) but is skipped.
+        #expect(v.slots[0].children.map(\.kind) == [.app, .keys, .keys])
+        let wf = ActionResolver.layout(payload: DragPayload([]), actions: [], settings: v)[0]
+        #expect(wf.children.map(\.target) == ["/Applications/Safari.app", "cmd+shift+4"])
     }
 
     @Test func containersCantNest() {
@@ -93,10 +96,13 @@ import Testing
         ])
         let v = s.validated()
         #expect(v.slots[0].kind == .system)
-        #expect(v.slots[1].kind == .empty)
+        #expect(v.slots[1].kind == .system)            // kept for editing…
+        let l = ActionResolver.layout(payload: DragPayload([]), actions: [], settings: v)
+        #expect(!l[1].enabled && l[1].note != nil)     // …but disabled on the wheel
         #expect(v.slots[2].kind == .empty)
-        #expect(v.slots[3].children.map(\.kind) == [.delay, .shell])
+        #expect(v.slots[3].children.map(\.kind) == [.delay, .delay, .shell])
         #expect(v.slots[3].children[0].target == "30.0")
+        #expect(l[3].children.map(\.kind) == [.delay, .shell])
     }
 
     @Test func workflowsHoldTwelveSteps() {
@@ -148,7 +154,7 @@ import Testing
             {"id":"c","kind":"workflow","title":"","icon":"","target":"","children":[]}]}]}
         """
         let p = try WheelPreset.decode(Data(json.utf8))
-        #expect(p.slots[0].kind == .empty)
+        #expect(ActionResolver.incomplete(p.slots[0]) != nil)
         #expect(p.slots[1].children.first?.kind == .empty)
     }
 }
