@@ -76,6 +76,14 @@ final class WheelController {
         effect.blendingMode = .behindWindow
         effect.state = .active
         view = WheelView(frame: effect.bounds)
+        // The window server blurs the desktop and casts the shadow from maskImage, not from the layer
+        // mask below, so without this the whole square window shows. A circle is the same at any turn.
+        let radius = WheelGeometry(bounds: effect.bounds).outerRadius + 1
+        effect.maskImage = NSImage(size: size, flipped: false) { r in
+            NSColor.black.setFill()
+            NSBezierPath(ovalIn: NSRect(x: r.midX - radius, y: r.midY - radius, width: radius * 2, height: radius * 2)).fill()
+            return true
+        }
         // The glass is cut into the same tiles the view draws, so gaps show the desktop. It's a layer
         // mask, not a mask image, so the cut-out turns with the ring when switching wheels.
         effect.wantsLayer = true
