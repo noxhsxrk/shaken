@@ -53,25 +53,26 @@ final class ShelfTrayController {
     func build(items: [ShelfItem]) -> NSSize {
         effect.subviews.filter { $0 !== surface }.forEach { $0.removeFromSuperview() }
 
-        let shelfIcon = NSImageView(image: Brand.glyph("Shelf") ?? NSImage())
-        shelfIcon.contentTintColor = Brand.accent
-        shelfIcon.translatesAutoresizingMaskIntoConstraints = false
-        shelfIcon.widthAnchor.constraint(equalToConstant: 16).isActive = true
-        shelfIcon.heightAnchor.constraint(equalToConstant: 16).isActive = true
         let title = NSTextField(labelWithString: L("Shelf"))
-        title.font = .systemFont(ofSize: 12, weight: .semibold)
-        let count = NSTextField(labelWithString: String(items.count))
-        count.font = .monospacedDigitSystemFont(ofSize: 11, weight: .medium)
+        title.font = .systemFont(ofSize: 13, weight: .semibold)
+        let count = NSTextField(labelWithString: items.count == 1 ? L("1 item") : L("%@ items", String(items.count)))
+        count.font = .monospacedDigitSystemFont(ofSize: 10, weight: .regular)
         count.textColor = .secondaryLabelColor
+        let header = NSStackView(views: [title, count])
+        header.orientation = .vertical
+        header.alignment = .leading
+        header.spacing = 3
+        header.widthAnchor.constraint(equalToConstant: 58).isActive = true
+        let divider = NSBox()
+        divider.boxType = .separator
+        divider.translatesAutoresizingMaskIntoConstraints = false
+        divider.widthAnchor.constraint(equalToConstant: 1).isActive = true
+        divider.heightAnchor.constraint(equalToConstant: 34).isActive = true
         let clear = NSButton(title: L("Clear"), target: self, action: #selector(clearAll))
-        clear.isBordered = false
-        clear.font = .systemFont(ofSize: 11, weight: .medium)
-        clear.contentTintColor = .secondaryLabelColor
-        let spacer = NSView()
-        spacer.setContentHuggingPriority(.init(1), for: .horizontal)
-        let header = NSStackView(views: [shelfIcon, title, count, spacer, clear])
-        header.orientation = .horizontal
-        header.spacing = 6
+        clear.bezelStyle = .roundRect
+        clear.controlSize = .small
+        clear.font = .systemFont(ofSize: 10, weight: .medium)
+        clear.widthAnchor.constraint(equalToConstant: 44).isActive = true
 
         var tiles: [NSView] = []
         if items.count > 1 { tiles.append(ShelfTileView(items: items, tray: self, isAll: true)) }
@@ -99,16 +100,13 @@ final class ShelfTrayController {
             doc.heightAnchor.constraint(equalTo: scroll.contentView.heightAnchor),
         ])
 
-        let hint = NSTextField(labelWithString: L("Drag out · click a slot to run it on the shelf"))
-        hint.font = .systemFont(ofSize: 10.5)
-        hint.textColor = .tertiaryLabelColor
-        hint.lineBreakMode = .byTruncatingTail
-
-        let stack = NSStackView(views: [header, scroll, hint])
-        stack.orientation = .vertical
-        stack.alignment = .leading
-        stack.spacing = 6
-        stack.edgeInsets = NSEdgeInsets(top: 10, left: 12, bottom: 10, right: 12)
+        // A single horizontal strip: title/count, separator, draggable items, Clear.
+        // Individual tiles and the All tile retain their existing drag lifecycle.
+        let stack = NSStackView(views: [header, divider, scroll, clear])
+        stack.orientation = .horizontal
+        stack.alignment = .centerY
+        stack.spacing = 12
+        stack.edgeInsets = NSEdgeInsets(top: 12, left: 16, bottom: 12, right: 16)
         stack.translatesAutoresizingMaskIntoConstraints = false
         effect.addSubview(stack)
         NSLayoutConstraint.activate([
@@ -116,14 +114,15 @@ final class ShelfTrayController {
             stack.trailingAnchor.constraint(equalTo: effect.trailingAnchor),
             stack.topAnchor.constraint(equalTo: effect.topAnchor),
             stack.bottomAnchor.constraint(equalTo: effect.bottomAnchor),
-            header.widthAnchor.constraint(equalTo: stack.widthAnchor, constant: -24),
-            scroll.widthAnchor.constraint(equalTo: stack.widthAnchor, constant: -24),
-            hint.widthAnchor.constraint(lessThanOrEqualTo: stack.widthAnchor, constant: -24),
             scroll.heightAnchor.constraint(equalToConstant: ShelfTileView.size.height),
         ])
+        scroll.setContentHuggingPriority(.init(1), for: .horizontal)
+        scroll.setContentCompressionResistancePriority(.init(1), for: .horizontal)
+        let tilesWidth = CGFloat(tiles.count) * (ShelfTileView.size.width + 4) - 4
+        let displayWidth = NSScreen.main?.visibleFrame.width ?? 640
+        let width = min(max(tilesWidth + 200, 460), min(640, displayWidth - 16))
+        let size = NSSize(width: width, height: 76)
 
-        let tilesWidth = CGFloat(tiles.count) * (ShelfTileView.size.width + 4) - 4 + 24
-        let size = NSSize(width: min(max(tilesWidth, 300), 560), height: ShelfTileView.size.height + 72)
         effect.frame = NSRect(origin: .zero, size: size)
         return size
     }
@@ -148,7 +147,7 @@ final class ShelfTrayController {
 private final class FlippedView: NSView { override var isFlipped: Bool { true } }
 
 final class ShelfTileView: NSView, NSDraggingSource {
-    static let size = NSSize(width: 78, height: 84)
+    static let size = NSSize(width: 118, height: 48)
 
     let items: [ShelfItem]
     weak var tray: ShelfTrayController?
@@ -169,7 +168,7 @@ final class ShelfTileView: NSView, NSDraggingSource {
         widthAnchor.constraint(equalToConstant: Self.size.width).isActive = true
         heightAnchor.constraint(equalToConstant: Self.size.height).isActive = true
 
-        image.frame = NSRect(x: (Self.size.width - 48) / 2, y: 28, width: 48, height: 48)
+        image.frame = NSRect(x: 4, y: 8, width: 32, height: 32)
         image.imageScaling = .scaleProportionallyUpOrDown
         image.wantsLayer = true
         image.layer?.cornerRadius = 6
@@ -179,7 +178,7 @@ final class ShelfTileView: NSView, NSDraggingSource {
             image.imageScaling = .scaleNone
             image.layer?.cornerRadius = 12
             image.layer?.backgroundColor = Brand.accent.cgColor
-            image.frame = NSRect(x: (Self.size.width - 44) / 2, y: 32, width: 44, height: 44)
+            image.frame = NSRect(x: 4, y: 8, width: 32, height: 32)
         } else {
             image.image = icon(for: items[0])
             if items[0].kind != .file { image.imageScaling = .scaleNone }
@@ -189,9 +188,9 @@ final class ShelfTileView: NSView, NSDraggingSource {
         let label = NSTextField(labelWithString: isAll ? L("All %@", String(items.count)) : items[0].title)
         label.font = .systemFont(ofSize: 10.5, weight: isAll ? .semibold : .regular)
         label.textColor = .labelColor
-        label.alignment = .center
+        label.alignment = .left
         label.lineBreakMode = !isAll && items[0].kind == .file ? .byTruncatingMiddle : .byTruncatingTail
-        label.frame = NSRect(x: 4, y: 7, width: Self.size.width - 8, height: 15)
+        label.frame = NSRect(x: 44, y: 16, width: Self.size.width - 50, height: 16)
         addSubview(label)
 
         if !isAll {

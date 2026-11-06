@@ -1,7 +1,7 @@
 import AppKit
 import SwiftUI
 
-/// Colours and artwork from the Shaken asset kit (ShakenAssets/README.md).
+/// Colours and artwork from the Shaken asset kit. The glyphs, menu bar template and app icon live in Resources/.
 enum Brand {
     // MARK: colours
 
@@ -20,6 +20,38 @@ enum Brand {
     static func surface(dark: Bool) -> NSColor { (dark ? darkSurface : lightSurface).withAlphaComponent(0.94) }
     static func stroke(dark: Bool) -> NSColor { dark ? darkStroke : lightStroke }
     static func text(dark: Bool) -> NSColor { dark ? darkText : lightText }
+
+    /// Draw over NSVisualEffectView, retaining the backdrop instead of painting it opaque.
+    /// Snapshot callers get a deterministic gradient even without a WindowServer backdrop.
+    static func drawGlass(_ path: NSBezierPath, dark: Bool, selected: Bool = false) {
+        let contrast = NSWorkspace.shared.accessibilityDisplayShouldIncreaseContrast
+        let opaque = NSWorkspace.shared.accessibilityDisplayShouldReduceTransparency || contrast
+        NSGraphicsContext.saveGraphicsState()
+        path.addClip()
+        let top: NSColor
+        let bottom: NSColor
+        if selected {
+            top = NSColor(srgbRed: 0.63, green: 0.68, blue: 1, alpha: 0.98)
+            bottom = NSColor(srgbRed: 0.40, green: 0.45, blue: 0.87, alpha: 0.98)
+        } else if dark {
+            top = NSColor(srgbRed: 0.25, green: 0.30, blue: 0.43, alpha: opaque ? 1 : 0.52)
+            bottom = NSColor(srgbRed: 0.10, green: 0.13, blue: 0.23, alpha: opaque ? 1 : 0.72)
+        } else {
+            top = NSColor(white: 1, alpha: opaque ? 1 : 0.64)
+            bottom = NSColor(srgbRed: 0.79, green: 0.83, blue: 0.94, alpha: opaque ? 1 : 0.62)
+        }
+        NSGradient(starting: bottom, ending: top)?.draw(in: path, angle: 90)
+        if !opaque {
+            // Broad light falloff rather than a flat coloured tile.
+            NSGradient(starting: NSColor.white.withAlphaComponent(selected ? 0.22 : 0.13),
+                       ending: NSColor.white.withAlphaComponent(0))?
+                .draw(in: path, relativeCenterPosition: NSPoint(x: -0.6, y: 1))
+        }
+        path.lineWidth = contrast ? 1.4 : (selected ? 1.15 : 0.8)
+        (contrast ? text(dark: dark) : NSColor.white.withAlphaComponent(selected ? 0.72 : (dark ? 0.30 : 0.68))).setStroke()
+        path.stroke()
+        NSGraphicsContext.restoreGraphicsState()
+    }
 
     // MARK: glyphs
 
@@ -80,11 +112,7 @@ final class BrandSurfaceView: NSView {
     override func draw(_ dirtyRect: NSRect) {
         let dark = effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
         let shape = NSBezierPath(roundedRect: bounds.insetBy(dx: 0.5, dy: 0.5), xRadius: cornerRadius, yRadius: cornerRadius)
-        Brand.surface(dark: dark).setFill()
-        shape.fill()
-        Brand.stroke(dark: dark).setStroke()
-        shape.lineWidth = 1
-        shape.stroke()
+        Brand.drawGlass(shape, dark: dark)
     }
     override func viewDidChangeEffectiveAppearance() { needsDisplay = true }
 }

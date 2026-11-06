@@ -94,9 +94,11 @@ final class WheelController {
         view.page = page
         var origin = NSPoint(x: point.x - Self.diameter / 2, y: point.y - Self.diameter / 2)
         if let screen = NSScreen.screens.first(where: { NSMouseInRect(point, $0.frame, false) }) {
-            let f = screen.frame
+            let f = screen.visibleFrame.insetBy(dx: 6, dy: 6)
+            // Keep a compact shelf beneath the wheel when the display has room.
+            let shelfSpace: CGFloat = mode == .click && shelfCount > 0 && f.height >= Self.diameter + 92 ? 86 : 0
             origin.x = min(max(origin.x, f.minX), f.maxX - Self.diameter)
-            origin.y = min(max(origin.y, f.minY), f.maxY - Self.diameter)
+            origin.y = min(max(origin.y, f.minY + shelfSpace), f.maxY - Self.diameter)
         }
         panel.setFrameOrigin(origin)
         Motion.fadeIn(panel)
@@ -168,7 +170,7 @@ final class WheelController {
 }
 
 /// Shared by the glass mask and the drawing: six tiles with even gaps around a centre disc.
-/// The asset kit's wheel (ShakenAssets/README.md), scaled from its 420 pt canvas:
+/// The Shaken asset kit's wheel, scaled from its 420 pt canvas:
 /// outer radius 202, ring inner radius 72, centre button 67, slots 57.6° wide with 2.4° gaps.
 struct WheelGeometry {
     let bounds: NSRect
@@ -192,12 +194,55 @@ struct WheelGeometry {
     func sector(_ i: Int) -> NSBezierPath {
         let mid = midAngle(i)
         let half = (step - Self.gapDegrees) / 2
-        let p = NSBezierPath()
-        p.appendArc(withCenter: center, radius: outerRadius, startAngle: mid + half, endAngle: mid - half, clockwise: true)
-        p.appendArc(withCenter: center, radius: ringInner, startAngle: mid - half, endAngle: mid + half)
-        p.close()
-        p.lineJoinStyle = .round
-        return p
+        // Sample the two circular boundaries and soften only their four junctions.
+        // These are real rounded corners; lineJoinStyle alone does not round a fill.
+        let samples = 48
+        func point(_ radius: CGFloat, _ angle: CGFloat) -> NSPoint {
+            let radians = angle * .pi / 180
+            return NSPoint(x: center.x + cos(radians) * radius,
+                           y: center.y + sin(radians) * radius)
+        }
+        var points: [NSPoint] = []
+        for n in 0...samples {
+            points.append(point(outerRadius, mid + half - CGFloat(n) * 2 * half / CGFloat(samples)))
+        }
+        for n in 0...samples {
+            points.append(point(ringInner, mid - half + CGFloat(n) * 2 * half / CGFloat(samples)))
+        }
+        let corners: Set<Int> = [0, samples, samples + 1, points.count - 1]
+        // Skip arc samples near the corner, leaving enough tangent length for a soft fillet.
+        let trim = 4
+        let kept = points.indices.filter { i in
+            if corners.contains(i) { return true }
+            return !corners.contains { abs($0 - i) <= trim }
+        }
+        let vertices = kept.map { points[$0] }
+        let path = NSBezierPath()
+        for j in vertices.indices {
+            let vertex = vertices[j]
+            let previous = vertices[(j + vertices.count - 1) % vertices.count]
+            let next = vertices[(j + 1) % vertices.count]
+            func toward(_ target: NSPoint, distance: CGFloat) -> NSPoint {
+                let length = hypot(target.x - vertex.x, target.y - vertex.y)
+                let fraction = min(distance / max(length, 0.001), 0.48)
+                return NSPoint(x: vertex.x + (target.x - vertex.x) * fraction,
+                               y: vertex.y + (target.y - vertex.y) * fraction)
+            }
+            let distance: CGFloat = corners.contains(kept[j]) ? 11 * scale : 0
+            let entry = toward(previous, distance: distance)
+            let exit = toward(next, distance: distance)
+            if j == 0 { path.move(to: entry) } else { path.line(to: entry) }
+            if distance > 0 {
+                // Quadratic corner expressed as a cubic with matching tangents.
+                let c1 = NSPoint(x: entry.x + (vertex.x - entry.x) * 2 / 3,
+                                 y: entry.y + (vertex.y - entry.y) * 2 / 3)
+                let c2 = NSPoint(x: exit.x + (vertex.x - exit.x) * 2 / 3,
+                                 y: exit.y + (vertex.y - exit.y) * 2 / 3)
+                path.curve(to: exit, controlPoint1: c1, controlPoint2: c2)
+            }
+        }
+        path.close()
+        return path
     }
 
     /// -1 = centre, nil = outside.
@@ -267,9 +312,6 @@ final class WheelView: NSView {
     // MARK: drawing
 
     private var isDark: Bool { effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua }
-    private var highContrast: Bool { NSWorkspace.shared.accessibilityDisplayShouldIncreaseContrast }
-    private var tileFill: NSColor { Brand.surface(dark: isDark) }
-    private var rim: NSColor { highContrast ? NSColor.labelColor.withAlphaComponent(0.6) : Brand.stroke(dark: isDark) }
     private var ink: NSColor { Brand.text(dark: isDark) }
     private var inkMuted: NSColor { ink.withAlphaComponent(0.6) }
 
@@ -279,21 +321,13 @@ final class WheelView: NSView {
             let path = g.sector(i)
             let s = slot(i)
             let hot = hovered == i && s?.enabled == true
-            (hot ? Brand.accent : tileFill).setFill()
-            path.fill()
-            rim.setStroke()
-            path.lineWidth = 1
-            path.stroke()
-            if let s { drawSlot(s, angle: g.midAngle(i), highlighted: hot) }
+            Brand.drawGlass(path, dark: isDark, selected: hot)
+            if let s { drawSlot(s, index: i, angle: g.midAngle(i), highlighted: hot) }
         }
 
         let disc = g.centreDisc
         let centreActive = hovered == -1 && (submenu != nil || mode == .drag)
-        (centreActive ? Brand.accent : tileFill).setFill()
-        disc.fill()
-        rim.setStroke()
-        disc.lineWidth = 1
-        disc.stroke()
+        Brand.drawGlass(disc, dark: isDark, selected: centreActive)
 
         let c = g.center, r = g.innerRadius
         if let page, submenu == nil, mode == .click { drawPage(page, centre: c) }
@@ -341,7 +375,7 @@ final class WheelView: NSView {
         }
     }
 
-    private func drawSlot(_ s: ResolvedSlot, angle: CGFloat, highlighted: Bool) {
+    private func drawSlot(_ s: ResolvedSlot, index: Int, angle: CGFloat, highlighted: Bool) {
         guard s.kind != .empty else { return }
         let g = geo
         let r = 141 * g.scale   // label centre radius from the kit
@@ -351,14 +385,28 @@ final class WheelView: NSView {
         let iconColor = color
         // Icon, title (1–2 lines) and note stacked as one block centred on the tile.
         let titleFont = NSFont.systemFont(ofSize: 12, weight: .medium)
-        let titleH = textHeight(s.title, font: titleFont, width: 96, lines: 2)
+        let titleWidth: CGFloat = 112
+        let titleH = textHeight(s.title, font: titleFont, width: titleWidth, lines: 2)
         let iconH: CGFloat = 24, gap: CGFloat = 5, noteH: CGFloat = s.note == nil ? 0 : 14
         let extraH: CGFloat = s.kind.opensRing ? 12 : 0
         let total = iconH + gap + titleH + noteH + extraH
         var y = p.y + total / 2
         drawSymbol(s.icon.isEmpty ? "bolt.fill" : s.icon, size: 22, weight: .regular, color: iconColor, at: NSPoint(x: p.x, y: y - iconH / 2))
         y -= iconH + gap
-        drawText(s.title, in: NSRect(x: p.x - 48, y: y - titleH, width: 96, height: titleH), font: titleFont, color: color, lines: 2)
+        let titleRect = NSRect(x: p.x - titleWidth / 2, y: y - titleH, width: titleWidth, height: titleH)
+        if mode == .click, titleH < 20 {
+            // Number keys are active only in click mode, so badges appear only there.
+            let number = String(index + 1)
+            let measured = (s.title as NSString).size(withAttributes: [.font: titleFont]).width
+            let groupWidth = min(measured, titleWidth - 22) + 22
+            let badge = NSRect(x: p.x - groupWidth / 2, y: titleRect.midY - 7, width: 14, height: 14)
+            color.withAlphaComponent(0.12).setFill()
+            NSBezierPath(roundedRect: badge, xRadius: 3, yRadius: 3).fill()
+            drawText(number, in: badge, font: .monospacedDigitSystemFont(ofSize: 10, weight: .medium), color: color, lines: 1)
+            drawText(s.title, in: NSRect(x: badge.maxX + 6, y: titleRect.minY, width: groupWidth - 20, height: titleH), font: titleFont, color: color, lines: 1)
+        } else {
+            drawText(s.title, in: titleRect, font: titleFont, color: color, lines: 2)
+        }
         y -= titleH
         if let note = s.note {
             drawText(note, in: NSRect(x: p.x - 48, y: y - noteH, width: 96, height: noteH),
