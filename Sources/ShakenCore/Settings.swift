@@ -146,6 +146,8 @@ public struct ShakenSettings: Codable, Equatable, Sendable {
     public var appWheels: [String: AppWheel] = [:]
     /// Extra wheels, in the order they're flipped through after the main one.
     public var wheels: [NamedWheel] = []
+    /// Look for a newer release on GitHub once a day.
+    public var checkForUpdates = true
     public static let maxWheels = 20
 
     /// The slots for a wheel opened without dragging while `bundleID` is in front.
@@ -284,7 +286,7 @@ public final class SettingsStore {
 // Decoding tolerates missing keys so older files keep working.
 extension ShakenSettings {
     enum CodingKeys: String, CodingKey {
-        case version, slots, gesture, excludedApps, hotKey, shrinkTargetKB, kindPreferences, approvals, appWheels, wheels
+        case version, slots, gesture, excludedApps, hotKey, shrinkTargetKB, kindPreferences, approvals, appWheels, wheels, checkForUpdates
     }
 
     public init(from d: Decoder) throws {
@@ -299,6 +301,7 @@ extension ShakenSettings {
         approvals = try c.decodeIfPresent([String: [String: String]].self, forKey: .approvals) ?? [:]
         appWheels = try c.decodeIfPresent([String: AppWheel].self, forKey: .appWheels) ?? [:]
         wheels = try c.decodeIfPresent([NamedWheel].self, forKey: .wheels) ?? []
+        checkForUpdates = try c.decodeIfPresent(Bool.self, forKey: .checkForUpdates) ?? true
     }
 }
 

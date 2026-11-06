@@ -1,0 +1,24 @@
+{
+    "configurations": [
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:shaken}",
+            "name": "Debug Shaken",
+            "target": "Shaken",
+            "configuration": "debug",
+            "preLaunchTask": "swift: Build Debug Shaken"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:shaken}",
+            "name": "Release Shaken",
+            "target": "Shaken",
+            "configuration": "release",
+            "preLaunchTask": "swift: Build Release Shaken"
+        }
+    ]
+}

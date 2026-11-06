@@ -1,0 +1,19 @@
+name: Idea or request
+description: A command, slot type or change you'd like
+labels: [idea]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do
+      description: The task, not the solution. For example "I send screenshots to a chat every day and always resize them first".
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would help
+  - type: textarea
+    id: workaround
+    attributes:
+      label: How you do it today

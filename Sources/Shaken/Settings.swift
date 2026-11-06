@@ -604,23 +604,52 @@ struct SlotFields: View {
     }
 }
 
+/// One tile of the wheel, the same shape as the real one (parallel gaps around a centre disc).
+struct WheelTileShape: Shape {
+    let index: Int
+    let count = ShakenSettings.slotCount
+
+    func path(in rect: CGRect) -> Path {
+        let c = CGPoint(x: rect.midX, y: rect.midY)
+        let outer = min(rect.width, rect.height) / 2 - 2
+        let inner: CGFloat = outer * 0.32
+        let gap: CGFloat = 4
+        let step = 360 / Double(count)
+        // SwiftUI's y axis points down, so slot 0 at the top is -90° and slots go clockwise.
+        let mid = -90 + Double(index) * step
+        func half(_ r: CGFloat) -> Double { asin(Double(gap / 2 / r)) * 180 / .pi }
+        var p = Path()
+        p.addArc(center: c, radius: outer, startAngle: .degrees(mid - step / 2 + half(outer)),
+                 endAngle: .degrees(mid + step / 2 - half(outer)), clockwise: false)
+        p.addArc(center: c, radius: inner, startAngle: .degrees(mid + step / 2 - half(inner)),
+                 endAngle: .degrees(mid - step / 2 + half(inner)), clockwise: true)
+        p.closeSubpath()
+        return p
+    }
+}
+
 struct WheelPreview: View {
     let slots: [Slot]
     @Binding var selected: String?
     let swap: (String, String) -> Void
+    /// False only for rendering a still image (drag and drop can't be rendered offscreen).
+    var interactive = true
+    @State private var dropTarget: String?
+    private let size: CGFloat = 290
 
     var body: some View {
         ZStack {
-            Circle().fill(.quaternary).frame(width: 280, height: 280)
-            Circle().fill(.background).frame(width: 90, height: 90)
-            Text(L("Dragged item")).font(.caption2).foregroundStyle(.secondary)
             ForEach(Array(slots.enumerated()), id: \.element.id) { i, s in
-                let angle = (90 - Double(i) * 60) * .pi / 180
-                SlotBubble(slot: s, isSelected: selected == s.id)
-                    .offset(x: cos(angle) * 95, y: -sin(angle) * 95)
+                let isSel = selected == s.id
+                let tile = WheelTileShape(index: i)
+                    .fill(isSel ? Color.accentColor : Color.primary.opacity(dropTarget == s.id ? 0.16 : 0.07))
+                    .overlay(WheelTileShape(index: i).stroke(Color.primary.opacity(0.12), lineWidth: 1))
+                if !interactive { tile } else {
+                tile
+                    .contentShape(WheelTileShape(index: i))
                     .onTapGesture { selected = s.id }
                     .onDrag { NSItemProvider(object: s.id as NSString) }
-                    .onDrop(of: [.plainText], isTargeted: nil) { providers in
+                    .onDrop(of: [.plainText], isTargeted: Binding(get: { dropTarget == s.id }, set: { dropTarget = $0 ? s.id : nil })) { providers in
                         providers.first?.loadObject(ofClass: NSString.self) { obj, _ in
                             if let from = obj as? String, from != s.id {
                                 DispatchQueue.main.async { swap(from, s.id); selected = s.id }
@@ -628,9 +657,23 @@ struct WheelPreview: View {
                         }
                         return true
                     }
+                    .accessibilityElement()
+                    .accessibilityLabel(L("Slot %@", String(i + 1)) + ": " + SlotBubble(slot: s, isSelected: isSel).title)
+                    .accessibilityAddTraits(isSel ? [.isButton, .isSelected] : .isButton)
+                }
+                let angle = (90 - Double(i) * 60) * .pi / 180
+                let r = (size / 2 - 2) * 0.66
+                SlotBubble(slot: s, isSelected: isSel)
+                    .offset(x: cos(angle) * r, y: -sin(angle) * r)
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
             }
+            Circle().fill(Color.primary.opacity(0.07)).frame(width: size * 0.31, height: size * 0.31)
+                .overlay(Circle().stroke(Color.primary.opacity(0.12), lineWidth: 1))
+            Text(L("Slot 1 is at the top")).font(.system(size: 9)).foregroundStyle(.secondary)
+                .multilineTextAlignment(.center).frame(width: size * 0.26)
         }
-        .frame(width: 290, height: 290)
+        .frame(width: size, height: size)
     }
 }
 
@@ -678,12 +721,11 @@ struct SlotBubble: View {
     var body: some View {
         VStack(spacing: 3) {
             SlotIcon(name: icon)
-            Text(title).font(.system(size: 10)).lineLimit(2).multilineTextAlignment(.center)
+                .foregroundStyle(isSelected ? Color.white : (slot.kind == .empty ? Color.secondary : Color.accentColor))
+            Text(title).font(.system(size: 10, weight: .medium)).lineLimit(2).multilineTextAlignment(.center)
+                .foregroundStyle(isSelected ? Color.white : (slot.kind == .empty ? Color.secondary : Color.primary))
         }
-        .frame(width: 76, height: 62)
-        .background(RoundedRectangle(cornerRadius: 10).fill(isSelected ? Color.accentColor.opacity(0.25) : Color.clear))
-        .overlay(RoundedRectangle(cornerRadius: 10).stroke(isSelected ? Color.accentColor : .clear, lineWidth: 1.5))
-        .contentShape(Rectangle())
+        .frame(width: 80, height: 62)
     }
 }
 
@@ -920,9 +962,15 @@ struct GeneralTab: View {
     var body: some View {
         Form {
             Toggle(L("Open at login"), isOn: Binding(get: { launchAtLogin }, set: { v in model.app.launchAtLogin = v; launchAtLogin = model.app.launchAtLogin }))
-            LabeledContent(L("Version"), value: version)
+            Toggle(L("Check for updates automatically"), isOn: model.binding(\.checkForUpdates))
+            LabeledContent(L("Version")) {
+                HStack {
+                    Text(version)
+                    Button(L("Check Now")) { model.app.checkForUpdates() }
+                }
+            }
             LabeledContent(L("License"), value: "MIT")
-            Text(L("Shaken needs no special permissions. It watches the mouse with a standard monitor and only reads what you drag after you shake."))
+            Text(L("Shaken watches the mouse with a standard monitor and only reads what you drag after you shake. Snippets, keyboard shortcuts and a few system controls need Accessibility; nothing else needs special permission."))
                 .font(.caption).foregroundStyle(.secondary)
         }
         .formStyle(.grouped)

@@ -1,0 +1,33 @@
+name: Bug report
+description: Something doesn't work the way it should
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what happened instead.
+      placeholder: |
+        1. Dragged a HEIC photo from Finder and shook
+        2. Dropped on Convert to JPG
+        3. The chip said ...
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostics
+      description: Menu bar icon › Help › Copy Diagnostics, then paste here. It has versions and recent errors, no file names.
+      render: text
+    validations:
+      required: true
+  - type: dropdown
+    id: input
+    attributes:
+      label: Mouse or trackpad
+      options: [Mouse, Trackpad, Magic Mouse, Not relevant]
+  - type: textarea
+    id: more
+    attributes:
+      label: Anything else
+      description: Screenshots, the app you were dragging from, or a screen recording help a lot.

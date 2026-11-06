@@ -71,12 +71,7 @@ final class ChipController {
         effect.frame = NSRect(origin: .zero, size: frame.size)
         panel.invalidateShadow()
         if !wasVisible {
-            panel.alphaValue = 0
-            panel.orderFrontRegardless()
-            NSAnimationContext.runAnimationGroup { ctx in
-                ctx.duration = 0.12
-                panel.animator().alphaValue = 1
-            }
+            Motion.fadeIn(panel, duration: 0.12)
         }
 
     }

@@ -24,6 +24,23 @@ class FloatingPanel: NSPanel {
 
 enum WheelMode { case drag, click }
 
+/// Fades panels in, or shows them at once when Reduce Motion is on.
+enum Motion {
+    static func fadeIn(_ panel: NSPanel, duration: TimeInterval = 0.09) {
+        if NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
+            panel.alphaValue = 1
+            panel.orderFrontRegardless()
+            return
+        }
+        panel.alphaValue = 0
+        panel.orderFrontRegardless()
+        NSAnimationContext.runAnimationGroup { ctx in
+            ctx.duration = duration
+            panel.animator().alphaValue = 1
+        }
+    }
+}
+
 struct WheelPageInfo: Equatable { var name: String; var index: Int; var count: Int }
 
 protocol WheelDelegate: AnyObject {
@@ -80,13 +97,9 @@ final class WheelController {
             origin.y = min(max(origin.y, f.minY), f.maxY - Self.diameter)
         }
         panel.setFrameOrigin(origin)
-        panel.alphaValue = 0
-        panel.orderFrontRegardless()
-        NSAnimationContext.runAnimationGroup { ctx in
-            ctx.duration = 0.09
-            panel.animator().alphaValue = 1
-        }
+        Motion.fadeIn(panel)
         openedAt = Date()
+        NSAccessibility.post(element: view, notification: .layoutChanged)
         poll?.invalidate()
         if mode == .drag {
             // Other apps keep the mouse during a drag, so we check its state ourselves.
@@ -244,8 +257,12 @@ final class WheelView: NSView {
     // MARK: drawing
 
     private var isDark: Bool { effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua }
-    private var tileFill: NSColor { NSColor.labelColor.withAlphaComponent(isDark ? 0.07 : 0.05) }
-    private var rim: NSColor { isDark ? NSColor.white.withAlphaComponent(0.14) : NSColor.black.withAlphaComponent(0.08) }
+    private var highContrast: Bool { NSWorkspace.shared.accessibilityDisplayShouldIncreaseContrast }
+    private var tileFill: NSColor { NSColor.labelColor.withAlphaComponent(highContrast ? 0.14 : (isDark ? 0.07 : 0.05)) }
+    private var rim: NSColor {
+        if highContrast { return NSColor.labelColor.withAlphaComponent(0.6) }
+        return isDark ? NSColor.white.withAlphaComponent(0.14) : NSColor.black.withAlphaComponent(0.08)
+    }
 
     override func draw(_ dirtyRect: NSRect) {
         let g = geo
@@ -451,6 +468,34 @@ final class WheelView: NSView {
         activate(index(at: convert(event.locationInWindow, from: nil)))
     }
 
+    // MARK: VoiceOver
+
+    override func isAccessibilityElement() -> Bool { false }
+    override func accessibilityRole() -> NSAccessibility.Role? { .group }
+    override func accessibilityLabel() -> String? { submenu?.title ?? L("Shaken wheel") }
+
+    /// One element per slot, in slot order, so VoiceOver can read and press them.
+    override func accessibilityChildren() -> [Any]? {
+        guard let window else { return nil }
+        let g = geo
+        return ring.enumerated().compactMap { i, s -> NSAccessibilityElement? in
+            guard s.kind != .empty else { return nil }
+            let e = WheelSlotElement()
+            e.setAccessibilityParent(self)
+            e.setAccessibilityRole(.button)
+            var label = s.title
+            if s.kind.opensRing { label += ", " + L("submenu") }
+            if let note = s.note { label += ", " + note }
+            e.setAccessibilityLabel(label)
+            e.setAccessibilityEnabled(s.enabled)
+            e.setAccessibilityHelp(L("Slot %@", String(i + 1)))
+            let local = g.sector(i).bounds
+            e.setAccessibilityFrame(window.convertToScreen(convert(local, to: nil)))
+            e.onPress = { [weak self] in self?.activate(i) }
+            return e
+        }
+    }
+
     // MARK: swipe (click mode)
 
     private var swipeX: CGFloat = 0
@@ -501,7 +546,7 @@ final class WheelView: NSView {
         }
     }
 
-    private func activate(_ i: Int?) {
+    fileprivate func activate(_ i: Int?) {
         if i == -1 {
             if submenu != nil { submenu = nil; hovered = nil; needsDisplay = true } else { controller?.delegate?.wheelShouldClose() }
             return
@@ -510,4 +555,10 @@ final class WheelView: NSView {
         if s.kind.opensRing { submenu = s; hovered = 0; needsDisplay = true; return }
         controller?.clicked(s)
     }
+}
+
+/// A wheel slot as VoiceOver sees it.
+private final class WheelSlotElement: NSAccessibilityElement {
+    var onPress: (() -> Void)?
+    override func accessibilityPerformPress() -> Bool { onPress?(); return onPress != nil }
 }

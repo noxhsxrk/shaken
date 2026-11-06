@@ -74,6 +74,7 @@ Requires macOS 13 or later. Free, MIT licensed.
 - [Writing a command](#writing-a-command)
 - [Command packs from Git](#command-packs-from-git)
 - [Permissions](#permissions)
+- [Updates and help](#updates-and-help)
 - [How it works](#how-it-works)
 - [Roadmap](#roadmap)
 
@@ -174,6 +175,9 @@ scripts/test.sh               # run the test suite
 ```
 
 ---
+
+The first time Shaken starts, a short welcome walks you through shaking, the keyboard and
+permissions, with a sample photo to try it on. Reopen it any time from *Help › Show Welcome*.
 
 ## Opening the wheel
 
@@ -400,6 +404,19 @@ Commands in your own Actions folder are yours and run without asking.
 
 Shaken watches the mouse with a standard event monitor and reads the drag only after you shake.
 Global keys use Carbon `RegisterEventHotKey`, which needs no permission.
+
+---
+
+## Updates and help
+
+- **Updates.** Shaken checks GitHub for a new release once a day and offers to download it.
+  Turn this off in *Settings → General*, or check by hand with *Help › Check for Updates*.
+- **Something wrong?** *Help › Report a Problem* copies your version, setup and recent errors
+  (no file names or contents) and opens a new issue. *Help › Copy Diagnostics* copies the same
+  text without opening anything.
+- **Accessibility.** The wheel works with VoiceOver, and follows Reduce Motion and Increase
+  Contrast.
+- **What changed.** See [`CHANGELOG.md`](CHANGELOG.md). Security reports: [`SECURITY.md`](SECURITY.md).
 
 ---
 

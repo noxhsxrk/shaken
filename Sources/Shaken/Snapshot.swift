@@ -1,10 +1,11 @@
 import AppKit
+import SwiftUI
 import ShakenCore
 
 /// Dev aid: `SHAKEN_SNAPSHOT=<dir> Shaken` renders the popups to PNGs and exits,
 /// so the look can be checked without driving a real drag.
 enum Snapshot {
-    static func runIfRequested() {
+    @MainActor static func runIfRequested() {
         if let dir = ProcessInfo.processInfo.environment["SHAKEN_ICONSET"] {
             do { try Logo.writeIconset(to: URL(fileURLWithPath: dir)); exit(0) } catch { print(error); exit(1) }
         }
@@ -41,6 +42,28 @@ enum Snapshot {
             let m = ActionResolver.layout(payload: DragPayload([]), actions: actions, settings: mixed.validated())
             wheel(m, summary: "Shaken", mode: .click, hover: 2, shelf: 0, ap, out.appendingPathComponent("wheel-kinds-\(name).png"))
             wheel(text, summary: "Text", mode: .click, hover: nil, shelf: 3, ap, out.appendingPathComponent("wheel-click-\(name).png"))
+        }
+        do {
+            var m = ShakenSettings()
+            m.slots = [Slot(kind: .app, target: "/System/Applications/Calendar.app"), Slot(kind: .system, target: "mute"),
+                       Slot(kind: .switcher), Slot(kind: .auto), Slot(kind: .keys, target: "cmd+shift+4"), Slot(kind: .empty)]
+            m = m.validated()
+            let r = ImageRenderer(content: WheelPreview(slots: m.slots, selected: .constant(m.slots[1].id), swap: { _, _ in }, interactive: false)
+                .padding(10).environment(\.colorScheme, .dark).background(Color(nsColor: NSColor(white: 0.16, alpha: 1))))
+            r.scale = 2
+            if let cg = r.cgImage {
+                try? NSBitmapImageRep(cgImage: cg).representation(using: .png, properties: [:])?.write(to: out.appendingPathComponent("settings-preview.png"))
+            }
+        }
+        let ctl = AppController()
+        for i in 0..<4 {
+            let r = ImageRenderer(content: WelcomeView(app: ctl, close: {}, page: i).environment(\.colorScheme, .dark)
+                .background(Color(nsColor: NSColor(white: 0.16, alpha: 1))))
+            r.scale = 2
+            if let cg = r.cgImage {
+                try? NSBitmapImageRep(cgImage: cg).representation(using: .png, properties: [:])?
+                    .write(to: out.appendingPathComponent("welcome-\(i).png"))
+            }
         }
         exit(0)
     }

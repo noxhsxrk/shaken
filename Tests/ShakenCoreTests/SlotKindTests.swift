@@ -172,3 +172,21 @@ import Testing
         #expect(try JSONDecoder().decode(ShakenSettings.self, from: Data(json.utf8)).wheels.isEmpty)
     }
 }
+
+@Suite struct UpdateCheckTests {
+    @Test func comparesVersionsNumerically() {
+        #expect(UpdateCheck.isNewer("v0.10.0", than: "0.9.3"))
+        #expect(UpdateCheck.isNewer("0.2", than: "0.1.9"))
+        #expect(!UpdateCheck.isNewer("0.1.0", than: "0.1"))
+        #expect(!UpdateCheck.isNewer("v0.1.0", than: "0.2.0"))
+        #expect(UpdateCheck.isNewer("1.0.0-beta", than: "0.9"))
+    }
+
+    @Test func readsReleaseJSON() {
+        let json = #"{"tag_name":"v0.2.0","html_url":"https://github.com/noxhsxrk/shaken/releases/tag/v0.2.0","body":"Notes","draft":false,"prerelease":false}"#
+        let r = UpdateCheck.parse(Data(json.utf8))
+        #expect(r?.version == "0.2.0")
+        #expect(r?.notes == "Notes")
+        #expect(UpdateCheck.parse(Data(#"{"tag_name":"v9","prerelease":true}"#.utf8)) == nil)
+    }
+}

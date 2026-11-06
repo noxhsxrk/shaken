@@ -40,12 +40,7 @@ final class ShelfTrayController {
             origin.x = min(max(origin.x, v.minX + 4), v.maxX - size.width - 4)
         }
         panel.setFrame(NSRect(origin: origin, size: size), display: true)
-        panel.alphaValue = 0
-        panel.orderFrontRegardless()
-        NSAnimationContext.runAnimationGroup { ctx in
-            ctx.duration = 0.09
-            panel.animator().alphaValue = 1
-        }
+        Motion.fadeIn(panel)
     }
 
     /// Lays out the tray for `items` and returns the size it needs.
