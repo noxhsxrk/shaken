@@ -60,6 +60,30 @@ enum Snapshot {
                 try? NSBitmapImageRep(cgImage: cg).representation(using: .png, properties: [:])?.write(to: out.appendingPathComponent("settings-preview.png"))
             }
         }
+        // Mid-swipe: the ring turned partway, the centre still.
+        for (dx, name) in [(CGFloat(-45), "turn-mid"), (CGFloat(-140), "turn-far")] {
+            let d = WheelController.diameter
+            let win = NSWindow(contentRect: NSRect(x: 0, y: 0, width: d, height: d), styleMask: .borderless, backing: .buffered, defer: false)
+            win.appearance = NSAppearance(named: .darkAqua)
+            let v = WheelView(frame: NSRect(x: 0, y: 0, width: d, height: d))
+            win.contentView = v
+            v.configure(slots: images, summary: "2 images", mode: .click, shelfCount: 0)
+            v.page = WheelPageInfo(name: "Main", index: 0, count: 3)
+            v.display()
+            v.turn(by: dx)
+            v.display()
+            let px = Int(d * 2)
+            if let ctx = CGContext(data: nil, width: px, height: px, bitsPerComponent: 8, bytesPerRow: 0,
+                                   space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue),
+               let host = v.layer {
+                ctx.setFillColor(Brand.night.cgColor); ctx.fill(CGRect(x: 0, y: 0, width: px, height: px))
+                ctx.scaleBy(x: 2, y: 2)
+                host.render(in: ctx)
+                if let img = ctx.makeImage() {
+                    try? NSBitmapImageRep(cgImage: img).representation(using: .png, properties: [:])?.write(to: out.appendingPathComponent("\(name).png"))
+                }
+            }
+        }
         let ctl = AppController()
         for i in 0..<4 {
             let r = ImageRenderer(content: WelcomeView(app: ctl, close: {}, page: i).environment(\.colorScheme, .dark)

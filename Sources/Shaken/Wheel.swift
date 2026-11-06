@@ -101,7 +101,6 @@ final class WheelController {
             origin.y = min(max(origin.y, f.minY + shelfSpace), f.maxY - Self.diameter)
         }
         panel.setFrameOrigin(origin)
-        restOrigin = origin
         Motion.fadeIn(panel)
         openedAt = Date()
         NSAccessibility.post(element: view, notification: .layoutChanged)
@@ -113,59 +112,28 @@ final class WheelController {
     }
 
     /// Swaps in another wheel without moving or re-animating the panel (⌘← / ⌘→).
-    // MARK: sliding between wheels
+    // MARK: turning between wheels
+    // The window and the centre stay still; only the ring of slots turns, like a dial.
 
-    /// Where the panel sits when it isn't being dragged sideways.
-    private var restOrigin = NSPoint.zero
-    private var sliding = false
-    static let slideDistance: CGFloat = 80
+    private var reduceMotion: Bool { NSWorkspace.shared.accessibilityDisplayShouldReduceMotion }
 
-    /// Follows the fingers during a two-finger swipe, with some resistance.
+    /// Follows a two-finger swipe: the ring turns with the fingers.
     func follow(_ dx: CGFloat) {
-        guard !sliding, !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion else { return }
-        let limit = Self.slideDistance * 1.4
-        let x = limit * tanh(dx / limit)   // eases off as it goes further
-        panel.setFrameOrigin(NSPoint(x: restOrigin.x + x, y: restOrigin.y))
-        panel.alphaValue = 1 - min(abs(x) / (limit * 2.2), 0.45)
+        guard !reduceMotion else { return }
+        view.turn(by: dx)
     }
 
-    /// The swipe wasn't far enough: spring back into place.
-    func settle() {
-        guard !sliding else { return }
-        NSAnimationContext.runAnimationGroup { ctx in
-            ctx.duration = 0.22
-            ctx.timingFunction = CAMediaTimingFunction(controlPoints: 0.2, 0.9, 0.25, 1.1)
-            panel.animator().setFrameOrigin(restOrigin)
-            panel.animator().alphaValue = 1
-        }
-    }
+    /// The swipe wasn't far enough: the ring springs back.
+    func settle() { view.cancelTurn() }
 
-    /// Slides the current wheel out and the next one in. `direction` 1 = next (moves left), -1 = previous.
+    /// Turns the old ring away and the new one in. `direction` 1 = next, -1 = previous.
     func slide(direction: Int, swap: @escaping () -> Void) {
-        if NSWorkspace.shared.accessibilityDisplayShouldReduceMotion || !panel.isVisible {
+        guard !reduceMotion, panel.isVisible else {
+            view.endTurn()
             swap()
-            panel.setFrameOrigin(restOrigin)
-            panel.alphaValue = 1
             return
         }
-        sliding = true
-        let d = CGFloat(direction) * Self.slideDistance
-        NSAnimationContext.runAnimationGroup({ ctx in
-            ctx.duration = 0.11
-            ctx.timingFunction = CAMediaTimingFunction(name: .easeIn)
-            panel.animator().setFrameOrigin(NSPoint(x: restOrigin.x - d, y: restOrigin.y))
-            panel.animator().alphaValue = 0
-        }, completionHandler: { [weak self] in
-            guard let self else { return }
-            swap()
-            self.panel.setFrameOrigin(NSPoint(x: self.restOrigin.x + d, y: self.restOrigin.y))
-            NSAnimationContext.runAnimationGroup({ ctx in
-                ctx.duration = 0.24
-                ctx.timingFunction = CAMediaTimingFunction(controlPoints: 0.2, 0.9, 0.25, 1.05)
-                self.panel.animator().setFrameOrigin(self.restOrigin)
-                self.panel.animator().alphaValue = 1
-            }, completionHandler: { [weak self] in self?.sliding = false })
-        })
+        view.finishTurn(direction: direction, swap: swap)
     }
 
     func replace(slots: [ResolvedSlot], summary: String, shelfCount: Int, page: WheelPageInfo?) {
@@ -177,7 +145,7 @@ final class WheelController {
     func key(_ k: WheelKeys.Key) { view.handleKey(k) }
 
     func close() {
-        sliding = false
+        view.endTurn()
         poll?.invalidate()
         poll = nil
         panel.orderOut(nil)
@@ -337,6 +305,7 @@ final class WheelView: NSView {
 
     override init(frame: NSRect) {
         super.init(frame: frame)
+        wantsLayer = true   // the ring turns as layers on top while switching wheels
         registerForDraggedTypes(DragReader.acceptedTypes)
         addTrackingArea(NSTrackingArea(rect: .zero, options: [.mouseMoved, .mouseEnteredAndExited, .activeAlways, .inVisibleRect], owner: self))
     }
@@ -375,6 +344,12 @@ final class WheelView: NSView {
     private var inkMuted: NSColor { ink.withAlphaComponent(0.6) }
 
     override func draw(_ dirtyRect: NSRect) {
+        if !ringHidden { drawRing() }
+        drawCentre()
+    }
+
+    /// The six slots: glass tiles, icons and labels.
+    private func drawRing() {
         let g = geo
         for i in 0..<g.count {
             let path = g.sector(i)
@@ -383,7 +358,142 @@ final class WheelView: NSView {
             Brand.drawGlass(path, dark: isDark, selected: hot)
             if let s { drawSlot(s, index: i, angle: g.midAngle(i), highlighted: hot) }
         }
+    }
 
+    // MARK: turning the ring
+
+    /// While turning, the ring is drawn by these layers instead of draw(_:), so it can rotate on the GPU.
+    private var ringHidden = false
+    private var oldRing: CALayer?
+    private var turnAngle: CGFloat = 0
+    private static let turnLimit: CGFloat = 38   // degrees the ring can be dragged
+    private static let turnAway: CGFloat = 62    // degrees it turns when switching
+
+    private func ringImage() -> CGImage? {
+        let scale = window?.backingScaleFactor ?? 2
+        guard let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: Int(bounds.width * scale), pixelsHigh: Int(bounds.height * scale),
+                                         bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
+                                         colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0) else { return nil }
+        rep.size = bounds.size
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: rep)
+        effectiveAppearance.performAsCurrentDrawingAppearance { drawRing() }
+        NSGraphicsContext.restoreGraphicsState()
+        return rep.cgImage
+    }
+
+    private func ringLayer() -> CALayer? {
+        guard let host = layer, let img = ringImage() else { return nil }
+        let l = CALayer()
+        l.frame = bounds
+        l.contents = img
+        l.contentsScale = window?.backingScaleFactor ?? 2
+        l.actions = ["transform": NSNull(), "opacity": NSNull()]   // driven explicitly, never implicitly
+        host.addSublayer(l)
+        return l
+    }
+
+    private func rotation(_ degrees: CGFloat, scale: CGFloat = 1) -> CATransform3D {
+        CATransform3DScale(CATransform3DMakeRotation(degrees * .pi / 180, 0, 0, 1), scale, scale, 1)
+    }
+
+    private func beginTurn() {
+        guard oldRing == nil else { return }
+        // A switch that's still animating snaps to its end first.
+        if !pendingRings.isEmpty { endTurn() }
+        turnID += 1
+        oldRing = ringLayer()
+        ringHidden = oldRing != nil
+        turnAngle = 0
+        needsDisplay = true
+    }
+
+    /// Fingers moving left turn the ring anticlockwise, like pushing the top of a dial.
+    func turn(by dx: CGFloat) {
+        beginTurn()
+        guard let l = oldRing else { return }
+        let limit = Self.turnLimit
+        turnAngle = limit * tanh(-dx * 0.45 / limit)
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        l.transform = rotation(turnAngle)
+        l.opacity = Float(1 - abs(turnAngle) / limit * 0.35)
+        CATransaction.commit()
+    }
+
+    func cancelTurn() {
+        guard let l = oldRing else { return }
+        let spring = CASpringAnimation(keyPath: "transform")
+        spring.fromValue = l.presentation()?.transform ?? l.transform
+        spring.toValue = CATransform3DIdentity
+        spring.damping = 16
+        spring.stiffness = 260
+        spring.duration = spring.settlingDuration
+        let fade = CABasicAnimation(keyPath: "opacity")
+        fade.fromValue = l.opacity
+        fade.toValue = 1
+        fade.duration = 0.2
+        let id = turnID
+        CATransaction.begin()
+        CATransaction.setCompletionBlock { [weak self] in if self?.turnID == id { self?.endTurn() } }
+        l.transform = CATransform3DIdentity
+        l.opacity = 1
+        l.add(spring, forKey: "settle")
+        l.add(fade, forKey: "fade")
+        CATransaction.commit()
+    }
+
+    /// Old ring turns away and fades; the new ring turns in from the other side and settles.
+    func finishTurn(direction: Int, swap: () -> Void) {
+        beginTurn()
+        guard let old = oldRing else { swap(); return }
+        let d = CGFloat(direction)
+        let from = old.presentation()?.transform ?? old.transform
+        swap()
+        ringHidden = true
+        guard let new = ringLayer() else { endTurn(); return }
+
+        let ease = CAMediaTimingFunction(controlPoints: 0.22, 0.9, 0.24, 1)
+        func animate(_ l: CALayer, _ key: String, _ a: Any, _ b: Any, _ t: CFTimeInterval, delay: CFTimeInterval = 0) {
+            let an = CABasicAnimation(keyPath: key)
+            an.fromValue = a; an.toValue = b; an.duration = t; an.timingFunction = ease
+            an.beginTime = delay > 0 ? CACurrentMediaTime() + delay : 0
+            an.fillMode = .backwards
+            l.add(an, forKey: key)
+        }
+        let id = turnID
+        CATransaction.begin()
+        CATransaction.setCompletionBlock { [weak self] in if self?.turnID == id { self?.endTurn() } }
+        let outT = rotation(d * Self.turnAway, scale: 0.94)
+        old.transform = outT; old.opacity = 0
+        animate(old, "transform", from, outT, 0.26)
+        animate(old, "opacity", old.presentation()?.opacity ?? 1, 0, 0.2)
+        let inFrom = rotation(-d * Self.turnAway, scale: 0.94)
+        new.transform = CATransform3DIdentity; new.opacity = 1
+        animate(new, "transform", inFrom, CATransform3DIdentity, 0.36, delay: 0.04)
+        animate(new, "opacity", 0, 1, 0.24, delay: 0.04)
+        CATransaction.commit()
+        oldRing = nil
+        pendingRings = [old, new]
+    }
+
+    private var pendingRings: [CALayer] = []
+    /// Bumped on every turn, so a finished animation only cleans up its own layers.
+    private var turnID = 0
+
+    /// Drops the turning layers and draws the ring normally again.
+    func endTurn() {
+        oldRing?.removeFromSuperlayer()
+        oldRing = nil
+        pendingRings.forEach { $0.removeFromSuperlayer() }
+        pendingRings = []
+        turnAngle = 0
+        if ringHidden { ringHidden = false; needsDisplay = true }
+    }
+
+    /// The centre button: what's dragged, the shelf, Back in a submenu, and the wheel's name.
+    private func drawCentre() {
+        let g = geo
         let disc = g.centreDisc
         let centreActive = hovered == -1 && (submenu != nil || mode == .drag)
         Brand.drawGlass(disc, dark: isDark, selected: centreActive)
