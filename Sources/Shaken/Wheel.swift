@@ -135,6 +135,9 @@ final class WheelController {
         view.finishTurn(direction: direction, swap: swap)
     }
 
+    /// Layers still left over from turning between wheels (0 once a turn has finished). For checks.
+    var leftoverTurnLayers: Int { view.leftoverTurnLayers }
+
     func replace(slots: [ResolvedSlot], summary: String, shelfCount: Int, page: WheelPageInfo?) {
         view.configure(slots: slots, summary: summary, mode: mode, shelfCount: shelfCount)
         view.page = page
@@ -549,6 +552,7 @@ final class WheelView: NSView {
     }
 
     private var pendingRings: [CALayer] = []
+    var leftoverTurnLayers: Int { tileMasks.count + pendingRings.count + (oldRing == nil ? 0 : 1) }
     /// Bumped on every turn, so a finished animation only cleans up its own layers.
     private var turnID = 0
 

@@ -4,7 +4,13 @@ import ShakenCore
 /// Right-click a slot on the open wheel to choose the command it shows, right there.
 extension AppController {
     func wheel(didRightClickSlotAt index: Int, menuHost view: NSView, at point: NSPoint) {
-        guard wheel.mode == .click, pages.indices.contains(pageIndex) else { return }
+        guard let menu = slotMenu(forSlotAt: index) else { return }
+        menu.popUp(positioning: nil, at: point, in: view)
+    }
+
+    /// The right-click menu for a slot of the open wheel (nil while dragging).
+    func slotMenu(forSlotAt index: Int) -> NSMenu? {
+        guard wheel.mode == .click, pages.indices.contains(pageIndex) else { return nil }
         let menu = NSMenu()
         menu.autoenablesItems = false
         menu.addItem(header(L("Slot %@", String(index + 1))))
@@ -16,8 +22,7 @@ extension AppController {
         guard let wheelSlots = pages[pageIndex].slots else {
             // Running apps: filled by macOS, nothing to choose.
             menu.addItem(note(L("This wheel shows your running apps.")))
-            menu.popUp(positioning: nil, at: point, in: view)
-            return
+            return menu
         }
         let resolved = layoutPage(pageIndex)
         if ActionResolver.suggestedIndex(ofSlot: index, in: wheelSlots) != nil {
@@ -48,7 +53,7 @@ extension AppController {
             self?.closeWheel()
             self?.openSettings()
         })
-        menu.popUp(positioning: nil, at: point, in: view)
+        return menu
     }
 
     private func place(_ id: String, inSlot i: Int, wheel slots: [Slot]) {

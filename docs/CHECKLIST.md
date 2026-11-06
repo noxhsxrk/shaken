@@ -1,7 +1,9 @@
 # Release checklist (real hardware)
 
 The PRD's release criteria. Numbers are defaults to revisit after issues #1–#3.
-Automated (✅ in `scripts/test.sh`) vs. by hand (☐).
+Automated (✅ in `scripts/test.sh`, plus `scripts/smoke.sh`, which drives the real app through
+drop → chip → undo, the shelf, right-click, switching wheels, glass color and Settings) vs. by hand (☐).
+Run `SHAKEN_NETWORK_TESTS=1 scripts/test.sh` once before a release to include the download test.
 
 | Area | Criterion | How |
 |---|---|---|
@@ -18,3 +20,6 @@ Automated (✅ in `scripts/test.sh`) vs. by hand (☐).
 | Errors | Damaged image, unwritable folder, name clash: clear message, originals intact, nothing partial left | ✅ `damagedImage…`, `unwritableFolder…`, `neverOverwrites` |
 | Install | Opens on a fresh macOS account without Gatekeeper warning, no Xcode | ☐ needs Developer ID + `NOTARY_PROFILE` |
 | Shelf | Drop on centre → on shelf; ⌃⌥Space shows tray; tile drags into Finder/Safari/Slack and leaves the shelf; clicking ZIP zips the shelf | ✅ `ShelfTests` · ☐ by hand |
+| Every command | Each built-in command runs on a real file and gives a valid result | ✅ `EveryCommandTests`, `ClipboardCommandTests` and the suites above · ☐ Open in Preview, Open link |
+| Right-click | Menu names the kind, picking swaps only that slot, choice is saved | ✅ `scripts/smoke.sh` · ☐ menu and Esc by hand |
+| Switching wheels | Whole wheel turns; nothing left behind | ✅ `scripts/smoke.sh` · ☐ look by hand |

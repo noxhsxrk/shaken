@@ -14,7 +14,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 }
 
-MainActor.assumeIsolated { Snapshot.runIfRequested() }
+MainActor.assumeIsolated {
+    SmokeTest.runIfRequested()
+    Snapshot.runIfRequested()
+}
 let app = NSApplication.shared
 let delegate = AppDelegate()
 app.delegate = delegate

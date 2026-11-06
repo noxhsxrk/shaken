@@ -296,6 +296,10 @@ public final class ActionRegistry {
 
 public enum ShakenPaths {
     public static var support: URL {
+        // For automated checks: keep settings, shelf and commands in a throwaway folder.
+        if let dir = ProcessInfo.processInfo.environment["SHAKEN_SUPPORT_DIR"], !dir.isEmpty {
+            return URL(fileURLWithPath: dir, isDirectory: true)
+        }
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         return base.appendingPathComponent("Shaken", isDirectory: true)
     }

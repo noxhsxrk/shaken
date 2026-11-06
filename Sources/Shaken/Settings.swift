@@ -1283,7 +1283,7 @@ struct ActionsTab: View {
     func swapSlots(_ a: String, _ b: String) {
         let slots = model.settings.slots
         guard let i = slots.firstIndex(where: { $0.id == a }), let j = slots.firstIndex(where: { $0.id == b }) else { return }
-        if let mj = ActionResolver.suggestedIndex(ofSlot: j, in: slots), ActionResolver.suggestedIndex(ofSlot: i, in: slots) != nil,
+        if ActionResolver.suggestedIndex(ofSlot: j, in: slots) != nil, ActionResolver.suggestedIndex(ofSlot: i, in: slots) != nil,
            let id = resolved[i].actionID {
             model.update { s in ActionResolver.place(id, inSlot: j, for: kind, actions: model.actions, settings: &s) }
         } else {
