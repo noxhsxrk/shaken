@@ -2,7 +2,7 @@
 
 All notable changes to Shaken. Versions follow [Semantic Versioning](https://semver.org).
 
-## Unreleased
+## 0.2.2 - 2026-11-06
 
 ### Changed
 - Switching wheels turns the ring of slots like a dial, around a centre that stays still, instead of moving the whole window. It runs on Core Animation, follows a two-finger swipe, and springs back if you let go early.
