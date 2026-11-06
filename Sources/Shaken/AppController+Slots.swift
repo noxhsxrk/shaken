@@ -236,17 +236,16 @@ extension AppController {
         prefix = prefix.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
         let alert = NSAlert()
         alert.messageText = L("Rename %@ files", String(files.count))
-        alert.informativeText = L("They'll be named “Name 01”, “Name 02”… in the order you dragged them. Undo puts the old names back.")
-        let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 300, height: 24))
-        field.stringValue = prefix.isEmpty ? L("Untitled") : prefix
-        alert.accessoryView = field
+        alert.informativeText = L("Type a name, or build one from the parts below. Files are numbered in the order you dragged them, and undo puts the old names back.")
+        let editor = RenamePatternView(files: files, initial: (prefix.isEmpty ? L("Untitled") : prefix) + " {n}")
+        alert.accessoryView = editor
         alert.addButton(withTitle: L("Rename"))
         alert.addButton(withTitle: L("Cancel"))
-        alert.window.initialFirstResponder = field
+        alert.window.initialFirstResponder = editor.field
         NSApp.activate(ignoringOtherApps: true)
         guard alert.runModal() == .alertFirstButtonReturn else { return nil }
-        let name = field.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
-        return name.isEmpty ? nil : name
+        let pattern = editor.field.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        return pattern.isEmpty ? nil : pattern
     }
 
     func approve(_ action: ActionManifest) {
@@ -287,5 +286,67 @@ extension AppController {
         Log.error(msg)
         chip.show(.failed(msg))
         updateEscape()
+    }
+}
+
+/// The rename dialog's pattern field: token buttons and a live preview of the first new names.
+final class RenamePatternView: NSView, NSTextFieldDelegate {
+    let field = NSTextField()
+    private let preview = NSTextField(wrappingLabelWithString: "")
+    private let files: [URL]
+    private let dates: [Date]
+
+    init(files: [URL], initial: String) {
+        self.files = files
+        dates = files.prefix(3).map(RenamePattern.date(of:))
+        super.init(frame: NSRect(x: 0, y: 0, width: 380, height: 120))
+        field.stringValue = initial
+        field.delegate = self
+        field.font = .monospacedSystemFont(ofSize: 13, weight: .regular)
+        let tokens = NSStackView(views: [("Number", "{n}"), ("Name", "{name}"), ("Date", "{date}"), ("Year", "{date:yyyy}")].map { title, token in
+            let b = NSButton(title: L(title), target: self, action: #selector(insert(_:)))
+            b.bezelStyle = .inline
+            b.controlSize = .small
+            b.identifier = NSUserInterfaceItemIdentifier(token)
+            b.toolTip = token
+            return b
+        })
+        tokens.spacing = 6
+        preview.font = .systemFont(ofSize: 11.5)
+        preview.textColor = .secondaryLabelColor
+        let stack = NSStackView(views: [field, tokens, preview])
+        stack.orientation = .vertical
+        stack.alignment = .leading
+        stack.spacing = 8
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(stack)
+        NSLayoutConstraint.activate([
+            stack.leadingAnchor.constraint(equalTo: leadingAnchor), stack.trailingAnchor.constraint(equalTo: trailingAnchor),
+            stack.topAnchor.constraint(equalTo: topAnchor), stack.bottomAnchor.constraint(equalTo: bottomAnchor),
+            field.widthAnchor.constraint(equalTo: stack.widthAnchor), preview.widthAnchor.constraint(equalTo: stack.widthAnchor),
+        ])
+        update()
+    }
+
+    required init?(coder: NSCoder) { fatalError() }
+
+    @objc private func insert(_ sender: NSButton) {
+        guard let token = sender.identifier?.rawValue else { return }
+        let s = field.stringValue
+        field.stringValue = s.isEmpty || s.hasSuffix(" ") ? s + token : s + " " + token
+        update()
+    }
+
+    func controlTextDidChange(_ obj: Notification) { update() }
+
+    private func update() {
+        let p = field.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        let pattern = p.contains("{") ? p : p + " {n}"
+        let shown = files.prefix(3).enumerated().map { i, f in
+            RenamePattern.apply(pattern, file: f, index: i, total: files.count, date: dates[i]) + (f.pathExtension.isEmpty ? "" : "." + f.pathExtension)
+        }
+        var text = shown.joined(separator: "   ") + (files.count > 3 ? "   …" : "")
+        if !RenamePattern.isDistinct(pattern) { text += "\n" + L("Same name for every file, so they'll get “ 2”, “ 3”… added.") }
+        preview.stringValue = text
     }
 }
