@@ -38,8 +38,13 @@ enum BuiltinSteps {
         switch name {
         case "convert": try forEachFile(input, name) { try convert($0, to: arg ?? "jpg", ctx) }
         case "resize":
-            guard let px = arg.flatMap(Int.init), px > 0 else { throw ShakenError.invalidManifest(L("resize needs a size, e.g. resize:1920")) }
-            try forEachFile(input, name) { try resize($0, maxPixel: px, ctx) }
+            if let a = arg, a.hasSuffix("%"), let pct = Double(a.dropLast()), pct > 0, pct < 100 {
+                try forEachFile(input, name) { try resize($0, scale: pct / 100, ctx) }
+            } else {
+                guard let px = arg.flatMap(Int.init), px > 0 else { throw ShakenError.invalidManifest(L("resize needs a size, e.g. resize:1920 or resize:50%")) }
+                try forEachFile(input, name) { try resize($0, maxPixel: px, ctx) }
+            }
+        case "compress-pdf": try forEachFile(input, name) { try compressPDF($0, ctx) }
         case "shrink":
             let target = arg.flatMap(Int.init).map { $0 * 1024 } ?? ctx.shrinkTargetBytes
             try forEachFile(input, name) { try shrink($0, targetBytes: target, ctx) }
@@ -179,7 +184,11 @@ enum BuiltinSteps {
         case "png": type = .png
         case "heic": type = .heic
         case "tiff", "tif": type = .tiff
-        default: throw ShakenError.invalidManifest(L("convert supports jpg, png, heic, tiff"))
+        case "avif":
+            type = UTType("public.avif") ?? .heic
+            let writable = (CGImageDestinationCopyTypeIdentifiers() as? [String]) ?? []
+            guard writable.contains(type.identifier) else { throw ShakenError.other(L("This version of macOS can't write AVIF")) }
+        default: throw ShakenError.invalidManifest(L("convert supports jpg, png, heic, avif, tiff"))
         }
         let (src, idx) = try source(url)
         let ext = type == .jpeg ? "jpg" : (type.preferredFilenameExtension ?? fmt)
@@ -190,6 +199,7 @@ enum BuiltinSteps {
         // Copies pixels and metadata (incl. orientation) in one pass — the fast path for the demo.
         var opts: [CFString: Any] = [:]
         if type == .jpeg || type == .heic { opts[kCGImageDestinationLossyCompressionQuality] = 0.9 }
+        if type.identifier == "public.avif" { opts[kCGImageDestinationLossyCompressionQuality] = 0.75 }
         CGImageDestinationAddImageFromSource(dest, src, idx, opts as CFDictionary)
         guard CGImageDestinationFinalize(dest) else { throw ShakenError.unreadableImage(url.lastPathComponent) }
     }
@@ -206,6 +216,43 @@ enum BuiltinSteps {
         for k in [kCGImagePropertyPixelWidth, kCGImagePropertyPixelHeight] { props[k] = nil }
         let (type, ext) = outputType(for: url)
         try write(img, to: ctx.outDir.appendingPathComponent("\(base(url))-\(maxPixel).\(ext)"), type: type, properties: props)
+    }
+
+    /// Scales by a fraction of the original size ("resize:50%").
+    static func resize(_ url: URL, scale: Double, _ ctx: StepContext) throws {
+        let (src, idx) = try source(url)
+        let props = CGImageSourceCopyPropertiesAtIndex(src, idx, nil) as? [CFString: Any] ?? [:]
+        let w = props[kCGImagePropertyPixelWidth] as? Int ?? 0, h = props[kCGImagePropertyPixelHeight] as? Int ?? 0
+        guard max(w, h) > 0 else { throw ShakenError.unreadableImage(url.lastPathComponent) }
+        let px = max(1, Int((Double(max(w, h)) * scale).rounded()))
+        let tmp = StepContext(outDir: ctx.outDir, shrinkTargetBytes: ctx.shrinkTargetBytes)
+        try resize(url, maxPixel: px, tmp)
+        // Name it by the percentage rather than the pixel size.
+        let (_, ext) = outputType(for: url)
+        let made = ctx.outDir.appendingPathComponent("\(base(url))-\(px).\(ext)")
+        let pct = Int((scale * 100).rounded())
+        try FileManager.default.moveItem(at: made, to: ctx.outDir.appendingPathComponent("\(base(url))-\(pct)%.\(ext)"))
+    }
+
+    /// Rewrites a PDF with images recompressed as JPEG and downsampled for the screen.
+    /// Keeps the original if that wouldn't make it smaller.
+    static func compressPDF(_ url: URL, _ ctx: StepContext) throws {
+        guard let doc = PDFDocument(url: url) else { throw ShakenError.unreadablePDF(url.lastPathComponent) }
+        let out = ctx.outDir.appendingPathComponent("\(base(url)) (compressed).pdf")
+        var opts: [PDFDocumentWriteOption: Any] = [:]
+        if #available(macOS 13.4, *) {
+            opts[.saveImagesAsJPEGOption] = true
+            opts[.optimizeImagesForScreenOption] = true
+        } else {
+            throw ShakenError.other(L("Compressing PDFs needs macOS 13.4 or later"))
+        }
+        guard doc.write(to: out, withOptions: opts) else { throw ShakenError.other(L("Can't write %@", out.lastPathComponent)) }
+        let before = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+        let after = (try? out.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+        if after == 0 || after >= before {
+            try? FileManager.default.removeItem(at: out)
+            throw ShakenError.nothingToDo(L("“%@” is already as small as it gets", url.lastPathComponent))
+        }
     }
 
     static func strip(_ url: URL, _ ctx: StepContext) throws {

@@ -100,6 +100,51 @@ enum BuiltinActions {
         accepts = ["shaken.text"]
         steps = ["copy-text"]
         """),
+        ("builtin.resize-1920", """
+        name = "Resize to 1920 px"
+        icon = "arrow.up.left.and.down.right.magnifyingglass"
+        accepts = ["public.image"]
+        steps = ["resize:1920"]
+        """),
+        ("builtin.resize-half", """
+        name = "Resize to 50%"
+        icon = "square.resize.down"
+        accepts = ["public.image"]
+        steps = ["resize:50%"]
+        """),
+        ("builtin.resize-1080", """
+        name = "Resize to 1080 px"
+        icon = "rectangle.compress.vertical"
+        accepts = ["public.image"]
+        steps = ["resize:1080"]
+        """),
+        ("builtin.to-avif", """
+        name = "Convert to AVIF"
+        icon = "photo.badge.arrow.down"
+        accepts = ["public.image"]
+        steps = ["convert:avif"]
+        """),
+        ("builtin.to-webp", """
+        name = "Convert to WebP"
+        icon = "globe.badge.chevron.backward"
+        accepts = ["public.image"]
+        requires = ["cwebp"]
+        install = "brew install webp"
+        run = "for f in \\"$@\\"; do b=$(basename \\"${f%.*}\\"); cwebp -quiet -q 82 -metadata icc \\"$f\\" -o \\"$SHAKEN_OUTPUT/$b.webp\\" || exit 1; done"
+        """),
+        ("builtin.compress-pdf", """
+        name = "Compress PDF"
+        icon = "doc.zipper"
+        accepts = ["com.adobe.pdf"]
+        steps = ["compress-pdf"]
+        """),
+        ("builtin.rename", """
+        name = "Rename in bulk"
+        icon = "character.cursor.ibeam"
+        accepts = ["public.item"]
+        min = 2
+        steps = ["rename"]
+        """),
     ]
 }
 

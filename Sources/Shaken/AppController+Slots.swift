@@ -97,7 +97,15 @@ extension AppController {
                 approve(action)
                 chip.show(.running(slot.title), at: point)
             }
-            run(label: action.displayName) { try await $0.run(action, input: input) }
+            var toRun = action
+            if action.asksForName {
+                chip.close()
+                guard let name = askRenameBase(for: input.files) else { updateEscape(); return }
+                toRun = action.withRenameBase(name)
+                chip.show(.running(slot.title), at: point)
+            }
+            let ready = toRun
+            run(label: action.displayName) { try await $0.run(ready, input: input) }
 
         case .folder:
             let folder = URL(fileURLWithPath: slot.target)
@@ -238,6 +246,27 @@ extension AppController {
             self?.updateEscape()
         }
         updateEscape()
+    }
+
+    /// Asks for the new base name for "Rename in bulk", suggesting what the files have in common.
+    func askRenameBase(for files: [URL]) -> String? {
+        let names = files.map { $0.deletingPathExtension().lastPathComponent }
+        var prefix = names.first ?? ""
+        for n in names.dropFirst() { while !n.hasPrefix(prefix) { prefix.removeLast() } }
+        prefix = prefix.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
+        let alert = NSAlert()
+        alert.messageText = L("Rename %@ files", String(files.count))
+        alert.informativeText = L("They'll be named “Name 01”, “Name 02”… in the order you dragged them. Undo puts the old names back.")
+        let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 300, height: 24))
+        field.stringValue = prefix.isEmpty ? L("Untitled") : prefix
+        alert.accessoryView = field
+        alert.addButton(withTitle: L("Rename"))
+        alert.addButton(withTitle: L("Cancel"))
+        alert.window.initialFirstResponder = field
+        NSApp.activate(ignoringOtherApps: true)
+        guard alert.runModal() == .alertFirstButtonReturn else { return nil }
+        let name = field.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        return name.isEmpty ? nil : name
     }
 
     func approve(_ action: ActionManifest) {

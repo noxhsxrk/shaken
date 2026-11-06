@@ -8,9 +8,10 @@ public enum Step: Equatable, Sendable {
     /// Built-in steps that create files. Everything else in `effectSteps` acts on files.
     public static let producingSteps: Set<String> = [
         "convert", "resize", "shrink", "strip-metadata", "to-pdf", "split-pdf", "merge-pdf", "zip", "qr", "save-text",
+        "compress-pdf",
     ]
     /// Steps with a side effect only (open, copy...). They may only appear at the end.
-    public static let effectSteps: Set<String> = ["open-with", "copy-names", "copy-text", "open-url", "reveal"]
+    public static let effectSteps: Set<String> = ["open-with", "copy-names", "copy-text", "open-url", "reveal", "rename"]
 
     public static func parse(_ raw: String) throws -> Step {
         let t = raw.trimmingCharacters(in: .whitespaces)
@@ -59,6 +60,19 @@ public struct ActionManifest: Equatable, Identifiable, Sendable {
     /// Pointless when what it would copy came from the clipboard in the first place.
     public var onlyCopiesText: Bool {
         steps.allSatisfy { if case .builtin("copy-text", _) = $0 { return true } else { return false } } && !steps.isEmpty
+    }
+
+    /// "Rename in bulk" without a fixed name: the app asks for one before running.
+    public var asksForName: Bool {
+        if case .builtin("rename", let arg)? = steps.last { return arg == nil || arg!.isEmpty }
+        return false
+    }
+
+    /// The same action with the rename step given `name`.
+    public func withRenameBase(_ name: String) -> ActionManifest {
+        var a = self
+        if case .builtin("rename", _)? = a.steps.last { a.steps[a.steps.count - 1] = .builtin(name: "rename", arg: name) }
+        return a
     }
 
     public var displayName: String {
