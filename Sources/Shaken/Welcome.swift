@@ -1,6 +1,7 @@
 import AppKit
 import ApplicationServices
 import ShakenCore
+import Combine
 import SwiftUI
 
 /// First-launch guide: how to shake, how to open the wheel without dragging,
