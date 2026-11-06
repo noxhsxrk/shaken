@@ -105,6 +105,7 @@ struct SettingsView: View {
             WheelTab().tabItem { Label(L("Wheel"), systemImage: "circle.circle") }
             GestureTab().tabItem { Label(L("Gesture"), systemImage: "hand.wave") }
             ActionsTab().tabItem { Label(L("Commands"), systemImage: "bolt") }
+            GalleryTab().tabItem { Label(L("Gallery"), systemImage: "square.grid.2x2") }
             PacksTab().tabItem { Label(L("Packs"), systemImage: "shippingbox") }
             GeneralTab().tabItem { Label(L("General"), systemImage: "gearshape") }
         }
@@ -196,6 +197,18 @@ extension SettingsModel {
         p.allowedContentTypes = [UTType(filenameExtension: WheelPreset.fileExtension) ?? .json, .json]
         guard p.runModal() == .OK, let url = p.url else { return }
         do { importWheel(try WheelPreset.decode(Data(contentsOf: url))) } catch { NSAlert(error: error).runModal() }
+    }
+
+    /// Downloads a gallery wheel and goes through the same review as any import.
+    @MainActor func installGalleryWheel(_ e: GalleryIndex.Entry) async {
+        do {
+            guard let url = URL(string: e.url) else { return }
+            let (data, response) = try await URLSession.shared.data(from: url)
+            guard (response as? HTTPURLResponse)?.statusCode == 200, data.count < 1_000_000 else {
+                throw ShakenError.other(L("Couldn't download the wheel"))
+            }
+            importWheel(try WheelPreset.decode(data))
+        } catch { NSAlert(error: error).runModal() }
     }
 
     func importWheelFromURL() {
@@ -817,6 +830,90 @@ struct SlotBubble: View {
                 .foregroundStyle(isSelected ? Color.white : (slot.kind == .empty ? Color.secondary : Color.primary))
         }
         .frame(width: 80, height: 62)
+    }
+}
+
+// MARK: - Gallery
+
+struct GalleryTab: View {
+    @EnvironmentObject var model: SettingsModel
+    @State private var index: GalleryIndex?
+    @State private var error: String?
+    @State private var loading = false
+    @State private var busy: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text(L("Wheels and command packs shared by other people. Everything is shown to you before it's added."))
+                    .font(.callout).foregroundStyle(.secondary)
+                Spacer()
+                Button { Task { await load() } } label: { Image(systemName: "arrow.clockwise") }
+                    .help(L("Reload")).disabled(loading)
+            }
+            if loading && index == nil {
+                ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if let error {
+                VStack(spacing: 8) {
+                    Image(systemName: "wifi.exclamationmark").font(.system(size: 30)).foregroundStyle(.secondary)
+                    Text(error).foregroundStyle(.secondary)
+                    Button(L("Try Again")) { Task { await load() } }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if let index {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 16) {
+                        section(L("Wheels"), index.wheels, action: L("Add…")) { e in await model.installGalleryWheel(e) }
+                        section(L("Command packs"), index.packs, action: L("Install")) { e in model.installPack(e.url) }
+                        if index.packs.isEmpty {
+                            Text(L("No command packs yet."))
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                        Link(L("Share your own wheel or pack…"), destination: GalleryIndex.submitPage).font(.callout)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+        }
+        .task { if index == nil { await load() } }
+    }
+
+    @ViewBuilder
+    private func section(_ title: String, _ entries: [GalleryIndex.Entry], action: String,
+                         run: @escaping (GalleryIndex.Entry) async -> Void) -> some View {
+        if !entries.isEmpty {
+            Text(title).font(.headline)
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 300), spacing: 10)], spacing: 10) {
+                ForEach(entries) { e in
+                    HStack(alignment: .top, spacing: 12) {
+                        Image(systemName: e.icon ?? "circle.circle").font(.system(size: 20)).foregroundStyle(Color.accentColor)
+                            .frame(width: 36, height: 36).background(RoundedRectangle(cornerRadius: 9).fill(Color.accentColor.opacity(0.12)))
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(e.name).font(.body.weight(.semibold))
+                            Text(e.description).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                            Text(L("by %@", e.author)).font(.caption2).foregroundStyle(.tertiary)
+                        }
+                        Spacer(minLength: 0)
+                        Button(action) {
+                            busy = e.id
+                            Task { await run(e); busy = nil }
+                        }
+                        .disabled(busy != nil)
+                    }
+                    .padding(12)
+                    .background(RoundedRectangle(cornerRadius: 12).fill(Color.primary.opacity(0.05)))
+                }
+            }
+        }
+    }
+
+    private func load() async {
+        loading = true
+        error = nil
+        do { index = try await GalleryIndex.fetch() } catch {
+            self.error = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+        }
+        loading = false
     }
 }
 

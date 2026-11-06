@@ -101,3 +101,24 @@ import UniformTypeIdentifiers
         #expect(Shortcuts.sniffExtension(f) == "txt")
     }
 }
+
+@Suite struct GalleryTests {
+    @Test func bundledIndexAndWheelsAreValid() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+        let index = try GalleryIndex.parse(Data(contentsOf: root.appendingPathComponent("gallery/index.json")))
+        #expect(!index.wheels.isEmpty)
+        for e in index.wheels {
+            let file = root.appendingPathComponent("gallery/wheels/\(e.id).shakenwheel")
+            let preset = try WheelPreset.decode(Data(contentsOf: file))
+            #expect(e.url.hasSuffix("/gallery/wheels/\(e.id).shakenwheel"))
+            // Every slot in a gallery wheel must be complete.
+            for s in preset.slots where s.kind != .empty { #expect(ActionResolver.incomplete(s) == nil, "\(e.id): \(s.kind) \(s.target)") }
+        }
+    }
+
+    @Test func dropsUnsafeLinks() throws {
+        let json = #"{"version":1,"wheels":[{"id":"a","name":"A","description":"","author":"x","url":"http://x/a.shakenwheel"}],"packs":[{"id":"p","name":"P","description":"","author":"x","url":"file:///tmp/p"}]}"#
+        let g = try GalleryIndex.parse(Data(json.utf8))
+        #expect(g.wheels.isEmpty && g.packs.isEmpty)
+    }
+}

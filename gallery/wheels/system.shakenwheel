@@ -1,0 +1,55 @@
+{
+  "format": "shaken.wheel",
+  "name": "System",
+  "slots": [
+    {
+      "children": [],
+      "icon": "",
+      "id": "c14744ee-6a0e-408f-9116-fe9ae08aabfe",
+      "kind": "system",
+      "target": "dark-mode",
+      "title": ""
+    },
+    {
+      "children": [],
+      "icon": "",
+      "id": "96fb8d2c-8688-4980-a297-12ba4df3894f",
+      "kind": "system",
+      "target": "mission-control",
+      "title": ""
+    },
+    {
+      "children": [],
+      "icon": "",
+      "id": "a8fddef9-6a2c-4d11-b22b-a7b0ceb209df",
+      "kind": "system",
+      "target": "screen-saver",
+      "title": ""
+    },
+    {
+      "children": [],
+      "icon": "",
+      "id": "bfbdd529-b041-4865-a217-26389592fda6",
+      "kind": "system",
+      "target": "sleep",
+      "title": ""
+    },
+    {
+      "children": [],
+      "icon": "",
+      "id": "b58cbd60-3c70-4cab-aaea-3142f273207c",
+      "kind": "system",
+      "target": "lock-screen",
+      "title": ""
+    },
+    {
+      "children": [],
+      "icon": "",
+      "id": "2a156cf1-57eb-4a34-bf83-95070143bf37",
+      "kind": "system",
+      "target": "display-sleep",
+      "title": ""
+    }
+  ],
+  "version": 1
+}

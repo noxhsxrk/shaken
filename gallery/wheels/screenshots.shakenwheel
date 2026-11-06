@@ -1,0 +1,55 @@
+{
+  "format": "shaken.wheel",
+  "name": "Screenshots",
+  "slots": [
+    {
+      "children": [],
+      "icon": "",
+      "id": "c8155bde-f983-43c6-8394-64aa69696462",
+      "kind": "keys",
+      "target": "cmd+shift+4",
+      "title": "Area"
+    },
+    {
+      "children": [],
+      "icon": "",
+      "id": "03b499ba-a7be-4e1a-aebe-bcf7028129df",
+      "kind": "keys",
+      "target": "cmd+shift+3",
+      "title": "Whole screen"
+    },
+    {
+      "children": [],
+      "icon": "",
+      "id": "d0ef9b52-0a01-4943-8e2d-d48472b75eba",
+      "kind": "keys",
+      "target": "cmd+shift+5",
+      "title": "Screenshot tools"
+    },
+    {
+      "children": [],
+      "icon": "",
+      "id": "8d065b88-4e37-486c-80a3-28f83309628e",
+      "kind": "app",
+      "target": "/System/Applications/Utilities/Screenshot.app",
+      "title": "Screenshot app"
+    },
+    {
+      "children": [],
+      "icon": "",
+      "id": "1a4d330b-c954-4a11-bad5-5e8ab7025762",
+      "kind": "app",
+      "target": "/System/Applications/Preview.app",
+      "title": "Preview"
+    },
+    {
+      "children": [],
+      "icon": "",
+      "id": "34bdd79b-7719-4f9e-a90a-ce57623a2274",
+      "kind": "keys",
+      "target": "cmd+ctrl+shift+4",
+      "title": "Area to clipboard"
+    }
+  ],
+  "version": 1
+}

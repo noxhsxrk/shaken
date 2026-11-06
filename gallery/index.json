@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "wheels": [
+    {
+      "id": "media",
+      "name": "Media",
+      "description": "Play, pause, skip and volume, laid out like a remote.",
+      "author": "Shaken",
+      "url": "https://raw.githubusercontent.com/noxhsxrk/shaken/main/gallery/wheels/media.shakenwheel",
+      "icon": "playpause"
+    },
+    {
+      "id": "screenshots",
+      "name": "Screenshots",
+      "description": "Every screenshot shortcut on one wheel, plus the Screenshot app and Preview.",
+      "author": "Shaken",
+      "url": "https://raw.githubusercontent.com/noxhsxrk/shaken/main/gallery/wheels/screenshots.shakenwheel",
+      "icon": "camera.viewfinder"
+    },
+    {
+      "id": "web-search",
+      "name": "Web search",
+      "description": "Drag text or a link onto a slot to look it up. Clicked, each opens the site.",
+      "author": "Shaken",
+      "url": "https://raw.githubusercontent.com/noxhsxrk/shaken/main/gallery/wheels/web-search.shakenwheel",
+      "icon": "magnifyingglass"
+    },
+    {
+      "id": "system",
+      "name": "System",
+      "description": "Dark mode, Mission Control, screen saver, display off, lock and sleep.",
+      "author": "Shaken",
+      "url": "https://raw.githubusercontent.com/noxhsxrk/shaken/main/gallery/wheels/system.shakenwheel",
+      "icon": "gearshape"
+    }
+  ],
+  "packs": []
+}

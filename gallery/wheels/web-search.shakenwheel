@@ -1,0 +1,55 @@
+{
+  "format": "shaken.wheel",
+  "name": "Web search",
+  "slots": [
+    {
+      "children": [],
+      "icon": "magnifyingglass",
+      "id": "a2bff404-cb06-49e4-b34b-725b042e2648",
+      "kind": "web",
+      "target": "https://www.google.com/search?q={query}",
+      "title": "Google"
+    },
+    {
+      "children": [],
+      "icon": "character.bubble",
+      "id": "9d28f44e-58cf-428c-984d-2d2e9ce3e265",
+      "kind": "web",
+      "target": "https://translate.google.com/?sl=auto&tl=en&text={query}",
+      "title": "Translate"
+    },
+    {
+      "children": [],
+      "icon": "map",
+      "id": "a74848ca-7be1-4934-9165-c0f0c4a3c44a",
+      "kind": "web",
+      "target": "https://maps.apple.com/?q={query}",
+      "title": "Maps"
+    },
+    {
+      "children": [],
+      "icon": "play.rectangle",
+      "id": "38f74b79-91cf-48d5-a6a5-de90cfcf36c9",
+      "kind": "web",
+      "target": "https://www.youtube.com/results?search_query={query}",
+      "title": "YouTube"
+    },
+    {
+      "children": [],
+      "icon": "chevron.left.forwardslash.chevron.right",
+      "id": "7b461950-08ee-4aed-8f66-c1feea384d55",
+      "kind": "web",
+      "target": "https://github.com/search?q={query}",
+      "title": "GitHub"
+    },
+    {
+      "children": [],
+      "icon": "book",
+      "id": "2d29366f-000b-42e5-aad4-ee5f9a7a6e0a",
+      "kind": "web",
+      "target": "https://en.wikipedia.org/w/index.php?search={query}",
+      "title": "Wikipedia"
+    }
+  ],
+  "version": 1
+}

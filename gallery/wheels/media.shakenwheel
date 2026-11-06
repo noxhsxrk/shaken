@@ -1,0 +1,55 @@
+{
+  "format": "shaken.wheel",
+  "name": "Media",
+  "slots": [
+    {
+      "children": [],
+      "icon": "",
+      "id": "66441d55-4d1b-4971-b4f8-61812302e0e8",
+      "kind": "system",
+      "target": "play-pause",
+      "title": ""
+    },
+    {
+      "children": [],
+      "icon": "",
+      "id": "f2a9a52a-de94-4fcb-982d-4c569c7591ac",
+      "kind": "system",
+      "target": "next-track",
+      "title": ""
+    },
+    {
+      "children": [],
+      "icon": "",
+      "id": "f8aa9e73-67c0-4439-906e-0921ede6e036",
+      "kind": "system",
+      "target": "volume-up",
+      "title": ""
+    },
+    {
+      "children": [],
+      "icon": "",
+      "id": "6b88b96e-58dd-4ca4-ab9b-0b7d77f9ecd0",
+      "kind": "system",
+      "target": "mute",
+      "title": ""
+    },
+    {
+      "children": [],
+      "icon": "",
+      "id": "f13c794d-15be-49b6-8c3f-ff3c98317462",
+      "kind": "system",
+      "target": "volume-down",
+      "title": ""
+    },
+    {
+      "children": [],
+      "icon": "",
+      "id": "254ab4d7-1e61-413c-ab26-6376e4ccb6f1",
+      "kind": "system",
+      "target": "previous-track",
+      "title": ""
+    }
+  ],
+  "version": 1
+}
