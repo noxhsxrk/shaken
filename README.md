@@ -45,7 +45,7 @@ Requires macOS 13 or later. Free, MIT licensed.
 - [Command packs from Git](#command-packs-from-git)
 - [Permissions](#permissions)
 - [How it works](#how-it-works)
-- [Development](#development)
+- [Roadmap](#roadmap)
 
 ---
 
@@ -397,25 +397,30 @@ Gesture detector -> Drag reader -> Action resolver -> Wheel overlay -> Job runne
 
 ---
 
-## Development
+## Roadmap
 
-```sh
-scripts/test.sh                                 # the test suite
-SHAKEN_SNAPSHOT=/tmp/snap .build/debug/Shaken   # render the wheel, tray and chip to PNGs and exit
-```
+**Next**
 
-The tests cover the gesture detector, manifest parsing, the resolver, settings validation, every
-built-in command, scripts, cancel, undo, packs, key combos and wheel presets. The README images
-come from the snapshot mode.
+- Hand-test the wheel, chip, shelf tray and swipe on real Macs, using the release checklist in
+  [`docs/CHECKLIST.md`](docs/CHECKLIST.md)
+- Tune the shake detector with real mouse and trackpad recordings. The current test traces are
+  synthetic.
+- An app icon, a signed and notarized DMG, and a first public release
 
-**Gesture traces.** `Tests/ShakenCoreTests/Fixtures/*.json` are pointer paths replayed through
-the detector at several sensitivities. The current files are synthetic (`scripts/gen-traces.py`).
-To add real ones, choose *menu bar → Record Gesture Traces*, drag as usual, then copy the files
-from *Show Traces Folder* into `Fixtures/`. They're picked up automatically.
+**Later**
 
-**Status.** Built from PRD v0.2 (R1–R9). The shelf, the launcher slot kinds, per-app wheels and
-wheel sharing were added on top of it. The wheel, chip and tray still need a hand test on a real
-Mac. See [`docs/CHECKLIST.md`](docs/CHECKLIST.md).
+- A gallery of shared wheels and command packs to browse and install from Settings
+- Window previews in the app switcher. This needs Screen Recording permission, so it would be opt-in.
+- A visual workflow editor with drag-to-reorder and a test run per step
+- More built-in commands: WebP and AVIF, image resize presets, PDF compression, rename in bulk
+- Results from Shortcuts and scripts shown in the chip, so they can be dragged onward too
+- Drag the result chip back onto the wheel to chain another command
+
+**Not planned**
+
+- Windows or Linux versions
+- Cloud services or accounts. Everything runs on your Mac.
+- Video and Office conversion built in. Call tools you already have from a command instead.
 
 ## License
 
