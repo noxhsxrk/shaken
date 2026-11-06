@@ -15,6 +15,7 @@ final class AppController: NSObject, WheelDelegate, ChipDelegate, ShelfTrayDeleg
     let chip = ChipController()
     let escape = EscapeKey()
     let wheelKeys = WheelKeys()
+    let preview = WindowPreviewController()
 
     /// Wheels to flip through with ⌘← / ⌘→ when opened without dragging.
     /// `slots == nil` is the page of running apps.
@@ -248,6 +249,7 @@ final class AppController: NSObject, WheelDelegate, ChipDelegate, ShelfTrayDeleg
     }
 
     func closeWheel() {
+        preview.hide()
         wheelKeys.deactivate()
         wheel.close()
         tray.close()
@@ -257,6 +259,14 @@ final class AppController: NSObject, WheelDelegate, ChipDelegate, ShelfTrayDeleg
     func wheelShouldClose() { closeWheel() }
 
     func wheelSwipe(next: Bool) { wheelKey(next ? .nextWheel : .previousWheel) }
+
+    /// Window previews for running apps (switcher ring and the Running apps page), if turned on.
+    func wheelHover(_ slot: ResolvedSlot?) {
+        guard store.settings.windowPreviews, wheel.mode == .click, let slot, slot.kind == .app, slot.id.hasPrefix("switch-") else {
+            return preview.hide()
+        }
+        preview.show(appPath: slot.target, beside: wheel.frame)
+    }
 
     func updateEscape() {
         if wheel.isVisible || chip.isVisible || tray.isVisible || job != nil { escape.activate() } else { escape.deactivate() }

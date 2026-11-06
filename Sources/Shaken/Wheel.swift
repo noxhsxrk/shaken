@@ -50,6 +50,8 @@ protocol WheelDelegate: AnyObject {
     func wheelShouldClose()
     /// Two-finger swipe sideways on a trackpad or Magic Mouse: flip to the next or previous wheel.
     func wheelSwipe(next: Bool)
+    /// The highlighted slot changed (nil = none), for window previews.
+    func wheelHover(_ slot: ResolvedSlot?)
 }
 
 final class WheelController {
@@ -158,6 +160,8 @@ final class WheelController {
 
     fileprivate func swiped(next: Bool) { delegate?.wheelSwipe(next: next) }
 
+    fileprivate func hoverChanged(_ slot: ResolvedSlot?) { delegate?.wheelHover(slot) }
+
     fileprivate func exited() {
         if !inGrace { delegate?.wheelShouldClose() }
     }
@@ -209,11 +213,14 @@ final class WheelView: NSView {
     weak var controller: WheelController?
 
     private var top: [ResolvedSlot] = []
-    private var submenu: ResolvedSlot?
+    private var submenu: ResolvedSlot? { didSet { submenuChanged = true } }
     private var summary = ""
     private var shelfCount = 0
     private var mode: WheelMode = .drag
-    var hovered: Int?                  // -1 = centre (internal for snapshots)
+    var hovered: Int? {                // -1 = centre (internal for snapshots)
+        didSet { if oldValue != hovered || submenuChanged { submenuChanged = false; controller?.hoverChanged(slot(hovered)) } }
+    }
+    private var submenuChanged = false
     /// Which wheel this is when there's more than one to flip through with ⌘← / ⌘→.
     var page: WheelPageInfo? { didSet { needsDisplay = true } }
     private var dwellIndex: Int?

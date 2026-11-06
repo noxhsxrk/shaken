@@ -938,6 +938,17 @@ struct GestureTab: View {
                 Text(L("Click the shortcut, then press the keys you want. Esc cancels."))
                     .font(.caption).foregroundStyle(.secondary)
             }
+            Section(L("App switcher")) {
+                Toggle(L("Show window previews"), isOn: Binding(get: { model.settings.windowPreviews }, set: { on in
+                    model.update { $0.windowPreviews = on }
+                    if on { WindowPreviewController.requestPermission() }
+                }))
+                .disabled(!WindowPreviewController.isAvailable)
+                Text(WindowPreviewController.isAvailable
+                     ? L("Shows a picture of the app's window while you point at it in the switcher. macOS asks for Screen Recording permission; Shaken only captures that one window, only while the switcher is open, and never saves it.")
+                     : L("Window previews need macOS 14 or later."))
+                    .font(.caption).foregroundStyle(.secondary)
+            }
             Section(L("Ignore shakes in these apps")) {
                 ExcludedApps()
             }
