@@ -8,7 +8,7 @@ cd "$(dirname "$0")/.."
 if [ -z "${DEVELOPER_DIR:-}" ] && [ -d /Applications/Xcode.app ]; then
   export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
 fi
-VERSION="${VERSION:-0.3.2}"
+VERSION="${VERSION:-0.1.0}"
 BUILD="${BUILD:-$(git rev-list --count HEAD 2>/dev/null || echo 1)}"
 APP=build/Shaken.app
 
