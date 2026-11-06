@@ -2,8 +2,10 @@ import Foundation
 
 /// Looks at the latest GitHub release and says whether it's newer than this build.
 public enum UpdateCheck {
-    public static let releasesAPI = URL(string: "https://api.github.com/repos/noxhsxrk/shaken/releases/latest")!
-    public static let releasesPage = URL(string: "https://github.com/noxhsxrk/shaken/releases/latest")!
+    /// Published by the website (scripts/sync-releases.sh in shaken-site): every release with its
+    /// DMG on the site, checksum and notes. Works whether or not the GitHub repo is public.
+    public static let feed = URL(string: "https://shaken.noxhsxrk.com/releases.json")!
+    public static let releasesPage = URL(string: "https://shaken.noxhsxrk.com/download")!
 
     public struct Release: Equatable, Sendable {
         public var version: String
@@ -54,16 +56,29 @@ public enum UpdateCheck {
         return nil
     }
 
+    /// Reads the site's releases.json and returns its newest release.
+    public static func parseFeed(_ data: Data) -> Release? {
+        guard let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let list = obj["releases"] as? [[String: Any]] else { return nil }
+        let releases: [Release] = list.compactMap { r in
+            guard let v = r["version"] as? String else { return nil }
+            let page = URL(string: "https://shaken.noxhsxrk.com/download#\(v)") ?? releasesPage
+            return Release(version: v, page: page, notes: r["notes"] as? String ?? "",
+                           dmg: (r["dmg"] as? String).flatMap(URL.init(string:)), sha256: (r["sha256"] as? String)?.lowercased())
+        }
+        return releases.max { isNewer($1.version, than: $0.version) }
+    }
+
     /// The latest release if it's newer than `current`, nil if up to date. Throws on network errors.
     public static func latest(newerThan current: String) async throws -> Release? {
-        var req = URLRequest(url: releasesAPI, timeoutInterval: 15)
-        req.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
-        req.setValue("Shaken", forHTTPHeaderField: "User-Agent")
+        var req = URLRequest(url: feed, timeoutInterval: 15)
+        req.cachePolicy = .reloadIgnoringLocalCacheData
+        req.setValue("Shaken/\(current)", forHTTPHeaderField: "User-Agent")
         let (data, response) = try await URLSession.shared.data(for: req)
         guard (response as? HTTPURLResponse)?.statusCode == 200 else {
-            throw ShakenError.other(L("Couldn't reach GitHub to check for updates"))
+            throw ShakenError.other(L("Couldn't reach shaken.noxhsxrk.com to check for updates"))
         }
-        guard let r = parse(data) else { return nil }
+        guard let r = parseFeed(data) else { return nil }
         return isNewer(r.version, than: current) ? r : nil
     }
 }

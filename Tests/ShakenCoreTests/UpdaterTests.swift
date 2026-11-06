@@ -72,4 +72,14 @@ import Testing
         #expect(r?.dmg?.lastPathComponent == "Shaken-0.3.0.dmg")
         #expect(r?.sha256 == "2db39666de43e469f729108c4ef52a0bbc5a1de9c0b75de1e34280dd67037156")
     }
+
+    @Test func readsTheSiteFeed() {
+        let json = #"{"latest":"0.2.1","releases":[{"version":"0.2.0","dmg":"https://shaken.noxhsxrk.com/releases/Shaken-0.2.0.dmg","sha256":"AA"},{"version":"0.2.1","notes":"Hi","dmg":"https://shaken.noxhsxrk.com/releases/Shaken-0.2.1.dmg","sha256":"BB"}]}"#
+        let r = UpdateCheck.parseFeed(Data(json.utf8))
+        #expect(r?.version == "0.2.1")
+        #expect(r?.dmg?.lastPathComponent == "Shaken-0.2.1.dmg")
+        #expect(r?.sha256 == "bb")
+        #expect(r?.page.absoluteString == "https://shaken.noxhsxrk.com/download#0.2.1")
+        #expect(UpdateCheck.parseFeed(Data("{}".utf8)) == nil)
+    }
 }
