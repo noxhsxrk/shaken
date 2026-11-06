@@ -6,7 +6,7 @@
       "name": "Media",
       "description": "Play, pause, skip and volume, laid out like a remote.",
       "author": "Shaken",
-      "url": "https://raw.githubusercontent.com/noxhsxrk/shaken/main/gallery/wheels/media.shakenwheel",
+      "url": "https://shaken.noxhsxrk.com/gallery/wheels/media.shakenwheel",
       "icon": "playpause"
     },
     {
@@ -14,7 +14,7 @@
       "name": "Screenshots",
       "description": "Every screenshot shortcut on one wheel, plus the Screenshot app and Preview.",
       "author": "Shaken",
-      "url": "https://raw.githubusercontent.com/noxhsxrk/shaken/main/gallery/wheels/screenshots.shakenwheel",
+      "url": "https://shaken.noxhsxrk.com/gallery/wheels/screenshots.shakenwheel",
       "icon": "camera.viewfinder"
     },
     {
@@ -22,7 +22,7 @@
       "name": "Web search",
       "description": "Drag text or a link onto a slot to look it up. Clicked, each opens the site.",
       "author": "Shaken",
-      "url": "https://raw.githubusercontent.com/noxhsxrk/shaken/main/gallery/wheels/web-search.shakenwheel",
+      "url": "https://shaken.noxhsxrk.com/gallery/wheels/web-search.shakenwheel",
       "icon": "magnifyingglass"
     },
     {
@@ -30,8 +30,24 @@
       "name": "System",
       "description": "Dark mode, Mission Control, screen saver, display off, lock and sleep.",
       "author": "Shaken",
-      "url": "https://raw.githubusercontent.com/noxhsxrk/shaken/main/gallery/wheels/system.shakenwheel",
+      "url": "https://shaken.noxhsxrk.com/gallery/wheels/system.shakenwheel",
       "icon": "gearshape"
+    },
+    {
+      "id": "photo-tools",
+      "name": "Photo tools",
+      "description": "Drop photos on it: convert, resize, cut out the subject, read the text, rotate, strip metadata.",
+      "author": "Shaken",
+      "url": "https://shaken.noxhsxrk.com/gallery/wheels/photo-tools.shakenwheel",
+      "icon": "photo"
+    },
+    {
+      "id": "file-tools",
+      "name": "File tools",
+      "description": "Copy paths and checksums, zip, rename in bulk, copy names, or download what a link points to.",
+      "author": "Shaken",
+      "url": "https://shaken.noxhsxrk.com/gallery/wheels/file-tools.shakenwheel",
+      "icon": "doc.on.doc"
     }
   ],
   "packs": []

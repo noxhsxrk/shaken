@@ -1,0 +1,55 @@
+{
+  "format": "shaken.wheel",
+  "name": "File tools",
+  "slots": [
+    {
+      "children": [],
+      "icon": "",
+      "id": "cc539a43-37c4-4381-b8d1-b2e39f489abb",
+      "kind": "action",
+      "target": "builtin.copy-path",
+      "title": ""
+    },
+    {
+      "children": [],
+      "icon": "",
+      "id": "10d4693d-56e6-4d10-a461-ebd4fcc594ed",
+      "kind": "action",
+      "target": "builtin.checksum",
+      "title": ""
+    },
+    {
+      "children": [],
+      "icon": "",
+      "id": "84eedcfa-6963-471e-be56-5cb7125c8010",
+      "kind": "action",
+      "target": "builtin.zip",
+      "title": ""
+    },
+    {
+      "children": [],
+      "icon": "",
+      "id": "94432bd1-f5d8-45ea-868a-72ee434e3473",
+      "kind": "action",
+      "target": "builtin.rename",
+      "title": ""
+    },
+    {
+      "children": [],
+      "icon": "",
+      "id": "c6662660-041c-470a-9d39-6d4ec3e15bf3",
+      "kind": "action",
+      "target": "builtin.copy-names",
+      "title": ""
+    },
+    {
+      "children": [],
+      "icon": "",
+      "id": "1140cd4b-1989-4e22-9d6f-333f4e32ca80",
+      "kind": "action",
+      "target": "builtin.download",
+      "title": ""
+    }
+  ],
+  "version": 1
+}

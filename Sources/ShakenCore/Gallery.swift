@@ -18,7 +18,7 @@ public struct GalleryIndex: Codable, Equatable, Sendable {
     public var wheels: [Entry]
     public var packs: [Entry]
 
-    public static let url = URL(string: "https://raw.githubusercontent.com/noxhsxrk/shaken/main/gallery/index.json")!
+    public static let url = URL(string: "https://shaken.noxhsxrk.com/gallery/index.json")!
     public static let submitPage = URL(string: "https://github.com/noxhsxrk/shaken/tree/main/gallery")!
 
     /// Parses the index, dropping entries whose links aren't https (wheels) or a valid Git URL (packs).

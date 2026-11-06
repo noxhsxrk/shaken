@@ -14,7 +14,7 @@ Wheels and command packs listed in *Settings › Gallery*.
   "name": "My wheel",
   "description": "One sentence on what it's for.",
   "author": "your GitHub name",
-  "url": "https://raw.githubusercontent.com/noxhsxrk/shaken/main/gallery/wheels/my-wheel.shakenwheel",
+  "url": "https://shaken.noxhsxrk.com/gallery/wheels/my-wheel.shakenwheel",
   "icon": "star"
 }
 ```

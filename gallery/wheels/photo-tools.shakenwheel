@@ -1,0 +1,55 @@
+{
+  "format": "shaken.wheel",
+  "name": "Photo tools",
+  "slots": [
+    {
+      "children": [],
+      "icon": "",
+      "id": "89bbf735-968d-4517-b5af-a8a56f0d90d6",
+      "kind": "action",
+      "target": "builtin.to-jpg",
+      "title": ""
+    },
+    {
+      "children": [],
+      "icon": "",
+      "id": "74b9a173-d987-4a69-842f-103552eb5c00",
+      "kind": "action",
+      "target": "builtin.resize-1920",
+      "title": ""
+    },
+    {
+      "children": [],
+      "icon": "",
+      "id": "e5bb3ff2-9ea3-401d-b262-795ad97e513b",
+      "kind": "action",
+      "target": "builtin.remove-background",
+      "title": ""
+    },
+    {
+      "children": [],
+      "icon": "",
+      "id": "112a44f1-ffa2-4baa-9eb5-782c61ad7226",
+      "kind": "action",
+      "target": "builtin.ocr",
+      "title": ""
+    },
+    {
+      "children": [],
+      "icon": "",
+      "id": "cecce9a3-36ae-424f-b68d-771e90367967",
+      "kind": "action",
+      "target": "builtin.rotate-right",
+      "title": ""
+    },
+    {
+      "children": [],
+      "icon": "",
+      "id": "aad4b84f-4d5c-4c1b-8ee9-a22f697b93a7",
+      "kind": "action",
+      "target": "builtin.strip-metadata",
+      "title": ""
+    }
+  ],
+  "version": 1
+}
