@@ -8,11 +8,10 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
 
     init(app: AppController) {
         model = SettingsModel(app: app)
-        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 760, height: 540),
-                              styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
+        let window = GlassWindow.make(size: NSSize(width: 880, height: 600), style: [.closable, .miniaturizable, .resizable],
+                                      root: SettingsView().environmentObject(model))
         window.title = L("Shaken Settings")
-        window.contentView = NSHostingView(rootView: SettingsView().environmentObject(model))
-        window.isReleasedWhenClosed = false
+        window.contentMinSize = NSSize(width: 820, height: 540)
         window.center()
         super.init(window: window)
         window.delegate = self
@@ -37,6 +36,8 @@ final class SettingsModel: ObservableObject {
     @Published var packMessage: String?
     /// Which wheel the Wheel tab edits: nil = main, otherwise an app's bundle id.
     @Published var wheelScope: String?
+    /// The pane shown in the window.
+    @Published var pane: SettingsPane = .wheel
 
     init(app: AppController) {
         self.app = app
@@ -99,19 +100,124 @@ final class SettingsModel: ObservableObject {
     }
 }
 
-struct SettingsView: View {
-    var body: some View {
-        TabView {
-            WheelTab().tabItem { Label(L("Wheel"), systemImage: "circle.circle") }
-            GestureTab().tabItem { Label(L("Gesture"), systemImage: "hand.wave") }
-            ActionsTab().tabItem { Label(L("Commands"), systemImage: "bolt") }
-            GalleryTab().tabItem { Label(L("Gallery"), systemImage: "square.grid.2x2") }
-            PacksTab().tabItem { Label(L("Packs"), systemImage: "shippingbox") }
-            GeneralTab().tabItem { Label(L("General"), systemImage: "gearshape") }
+enum SettingsPane: Int, CaseIterable, Identifiable {
+    case wheel, gesture, commands, gallery, packs, general
+    var id: Int { rawValue }
+
+    var title: String {
+        switch self {
+        case .wheel: return L("Wheel")
+        case .gesture: return L("Gesture")
+        case .commands: return L("Commands")
+        case .gallery: return L("Gallery")
+        case .packs: return L("Packs")
+        case .general: return L("General")
         }
-        .padding()
-        .frame(minWidth: 720, minHeight: 500)
+    }
+
+    var icon: String {
+        switch self {
+        case .wheel: return "circle.circle"
+        case .gesture: return "hand.wave"
+        case .commands: return "bolt"
+        case .gallery: return "square.grid.2x2"
+        case .packs: return "shippingbox"
+        case .general: return "gearshape"
+        }
+    }
+}
+
+struct SettingsView: View {
+    @EnvironmentObject var model: SettingsModel
+
+    var body: some View {
+        HStack(spacing: 0) {
+            SettingsSidebar()
+                .frame(width: 196)
+            Rectangle().fill(Color.primary.opacity(0.08)).frame(width: 1).ignoresSafeArea()
+            // Every pane stays alive, as in a tab view, so each keeps its own state between visits.
+            ZStack(alignment: .topLeading) {
+                ForEach(SettingsPane.allCases) { p in
+                    pane(p)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                        .opacity(model.pane == p ? 1 : 0)
+                        .allowsHitTesting(model.pane == p)
+                        .accessibilityHidden(model.pane != p)
+                }
+            }
+            .padding(.horizontal, 26)
+            .padding(.top, 14)
+            .padding(.bottom, 20)
+        }
+        .background(GlassBackdrop())
+        .frame(minWidth: 820, minHeight: 540)
         .tint(Brand.accentColor)
+    }
+
+    @ViewBuilder private func pane(_ p: SettingsPane) -> some View {
+        switch p {
+        case .wheel: WheelTab()
+        case .gesture: GestureTab()
+        case .commands: ActionsTab()
+        case .gallery: GalleryTab()
+        case .packs: PacksTab()
+        case .general: GeneralTab()
+        }
+    }
+}
+
+/// The list of panes, each on a strip of glass that lights up in the accent when chosen. ⌘1–⌘6 jump to them.
+struct SettingsSidebar: View {
+    @EnvironmentObject var model: SettingsModel
+    @State private var hovered: SettingsPane?
+
+    var version: String { Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "dev" }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            HStack(spacing: 10) {
+                Image(nsImage: NSApp.applicationIconImage).resizable().frame(width: 32, height: 32)
+                VStack(alignment: .leading, spacing: 0) {
+                    Text("Shaken").font(.system(size: 14, weight: .semibold))
+                    Text(L("Settings")).font(.caption).foregroundStyle(.secondary)
+                }
+            }
+            .padding(.horizontal, 8)
+            .padding(.bottom, 14)
+            .accessibilityElement(children: .combine)
+            ForEach(SettingsPane.allCases) { p in item(p) }
+            Spacer()
+            Text(version).font(.caption2).foregroundStyle(.tertiary).padding(.horizontal, 10)
+        }
+        .padding(.horizontal, 12)
+        .padding(.top, 44)   // clear of the traffic lights
+        .padding(.bottom, 14)
+    }
+
+    private func item(_ p: SettingsPane) -> some View {
+        let selected = model.pane == p
+        return Button { model.pane = p } label: {
+            HStack(spacing: 10) {
+                Image(systemName: p.icon).font(.system(size: 13, weight: .medium)).frame(width: 18)
+                    .foregroundStyle(selected ? Brand.onAccentColor : Brand.accentColor)
+                Text(p.title).font(.system(size: 13, weight: selected ? .semibold : .regular))
+                    .foregroundStyle(selected ? Brand.onAccentColor : Color.primary)
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 10)
+            .frame(height: 30)
+            .background {
+                let shape = RoundedRectangle(cornerRadius: 8, style: .continuous)
+                if selected { GlassShape(shape: shape, selected: true) }
+                else if hovered == p { shape.fill(Color.primary.opacity(0.06)) }
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .keyboardShortcut(KeyEquivalent(Character(String(p.rawValue + 1))), modifiers: .command)
+        .onHover { hovered = $0 ? p : (hovered == p ? nil : hovered) }
+        .accessibilityAddTraits(selected ? [.isSelected] : [])
+        .help("⌘\(p.rawValue + 1)")
     }
 }
 
@@ -305,8 +411,25 @@ struct WheelTab: View {
         return ""
     }
 
+    var scopeHint: String {
+        model.wheelScope == nil
+            ? L("Used while dragging, and without dragging in apps that have no wheel of their own.")
+            : model.editingNamedIndex != nil
+            ? L("An extra wheel. Open the wheel without dragging, then flip to it with ⌘← / ⌘→ or a two-finger swipe.")
+            : L("Shown instead of the main wheel when this app is in front and you open the wheel without dragging.")
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 14) {
+            PaneHeader(title: L("Wheel"), subtitle: scopeHint) {
+                Menu(L("Share")) {
+                    Button(L("Export This Wheel…")) { model.exportWheel() }
+                    Divider()
+                    Button(L("Import Wheel File…")) { model.importWheelFile() }
+                    Button(L("Import Wheel from URL…")) { model.importWheelFromURL() }
+                }
+                .fixedSize()
+            }
             HStack {
                 Picker(L("Wheel"), selection: $model.wheelScope) {
                     Text(L("Main wheel")).tag(String?.none)
@@ -339,13 +462,6 @@ struct WheelTab: View {
                         }
                 }
                 Spacer()
-                Menu(L("Share")) {
-                    Button(L("Export This Wheel…")) { model.exportWheel() }
-                    Divider()
-                    Button(L("Import Wheel File…")) { model.importWheelFile() }
-                    Button(L("Import Wheel from URL…")) { model.importWheelFromURL() }
-                }
-                .frame(width: 90)
             }
             if let i = model.editingNamedIndex {
                 HStack {
@@ -365,15 +481,8 @@ struct WheelTab: View {
                         .disabled(i == model.settings.wheels.count - 1).help(L("Later in the ⌘← / ⌘→ order"))
                 }
             }
-            Text(model.wheelScope == nil
-                 ? L("Used while dragging, and without dragging in apps that have no wheel of their own.")
-                 : model.editingNamedIndex != nil
-                 ? L("An extra wheel. Open the wheel without dragging, then flip to it with ⌘← / ⌘→ or a two-finger swipe.")
-                 : L("Shown instead of the main wheel when this app is in front and you open the wheel without dragging."))
-                .font(.caption).foregroundStyle(.secondary)
-            Divider()
-            HStack(alignment: .top, spacing: 24) {
-                VStack {
+            HStack(alignment: .top, spacing: 16) {
+                VStack(spacing: 10) {
                     WheelPreview(slots: model.editingSlots, selected: $selected) { a, b in
                         model.updateSlots { slots in
                             guard let i = slots.firstIndex(where: { $0.id == a }), let j = slots.firstIndex(where: { $0.id == b }) else { return }
@@ -382,10 +491,13 @@ struct WheelTab: View {
                     }
                     Text(L("Drag one slot onto another to swap them. Positions stay fixed so your hand can learn them."))
                         .font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.center).frame(width: 280)
+                    Spacer(minLength: 0)
                     Button(L("Reset to Suggestions")) { model.updateSlots { $0 = ShakenSettings.defaultSlots() } }
-                        .padding(.top, 6)
                 }
-                Divider()
+                .frame(width: 300)
+                .frame(maxHeight: .infinity)
+                .glassCard(padding: 16)
+                Group {
                 if let id = selected, let i = model.editingSlots.firstIndex(where: { $0.id == id }) {
                     ScrollView {
                         VStack(alignment: .leading, spacing: 12) {
@@ -411,6 +523,9 @@ struct WheelTab: View {
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .glassCard(padding: 16)
             }
         }
         .onAppear { if selected == nil { selected = model.editingSlots.first?.id } }
@@ -478,7 +593,7 @@ struct ChildrenEditor: View {
                                 : L("Add up to six items. Rest on the slot while dragging, or click it, to open them."))
                     .font(.caption).foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .center).padding(.vertical, 18)
-                    .background(RoundedRectangle(cornerRadius: 10).strokeBorder(style: StrokeStyle(lineWidth: 1, dash: [4])).foregroundStyle(.quaternary))
+                    .background(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(style: StrokeStyle(lineWidth: 1, dash: [4])).foregroundStyle(.tertiary))
             }
             ForEach(Array(children.enumerated()), id: \.element.id) { j, child in
                 VStack(spacing: 0) {
@@ -520,8 +635,7 @@ struct ChildrenEditor: View {
                 Image(systemName: "line.3.horizontal").foregroundStyle(.tertiary)
                     .help(L("Drag to reorder"))
                 if isWorkflow {
-                    Text("\(j + 1)").font(.system(size: 11, weight: .bold)).foregroundStyle(.white)
-                        .frame(width: 20, height: 20).background(Circle().fill(Brand.accentColor))
+                    StepBadge(text: "\(j + 1)")
                 }
                 SlotIcon(name: bubble.icon, size: 14).frame(width: 24)
                     .foregroundStyle(Brand.accentColor)
@@ -556,8 +670,8 @@ struct ChildrenEditor: View {
                 .padding(8)
             }
         }
-        .background(RoundedRectangle(cornerRadius: 10).fill(Color.primary.opacity(dragging == child.id ? 0.03 : 0.06)))
-        .overlay(RoundedRectangle(cornerRadius: 10).stroke(expanded ? Brand.accentColor.opacity(0.6) : Color.primary.opacity(0.08)))
+        .glassCard(padding: 0, radius: 10)
+        .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(Brand.accentColor.opacity(expanded ? 0.6 : 0), lineWidth: 1))
         .opacity(dragging == child.id ? 0.5 : 1)
     }
 }
@@ -884,11 +998,8 @@ struct GalleryTab: View {
     @State private var busy: String?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text(L("Wheels and command packs shared by other people. Everything is shown to you before it's added."))
-                    .font(.callout).foregroundStyle(.secondary)
-                Spacer()
+        VStack(alignment: .leading, spacing: 14) {
+            PaneHeader(title: L("Gallery"), subtitle: L("Wheels and command packs shared by other people. Everything is shown to you before it's added.")) {
                 Button { Task { await load() } } label: { Image(systemName: "arrow.clockwise") }
                     .help(L("Reload")).disabled(loading)
             }
@@ -928,7 +1039,7 @@ struct GalleryTab: View {
                 ForEach(entries) { e in
                     HStack(alignment: .top, spacing: 12) {
                         Image(systemName: e.icon ?? "circle.circle").font(.system(size: 20)).foregroundStyle(Brand.accentColor)
-                            .frame(width: 36, height: 36).background(RoundedRectangle(cornerRadius: 9).fill(Brand.accentColor.opacity(0.12)))
+                            .frame(width: 36, height: 36).background(RoundedRectangle(cornerRadius: 9, style: .continuous).fill(Brand.accentColor.opacity(0.14)))
                         VStack(alignment: .leading, spacing: 3) {
                             Text(e.name).font(.body.weight(.semibold))
                             Text(e.description).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
@@ -941,8 +1052,7 @@ struct GalleryTab: View {
                         }
                         .disabled(busy != nil)
                     }
-                    .padding(12)
-                    .background(RoundedRectangle(cornerRadius: 12).fill(Color.primary.opacity(0.05)))
+                    .glassCard(padding: 12, radius: 12)
                 }
             }
         }
@@ -1047,6 +1157,8 @@ struct GestureTab: View {
     @EnvironmentObject var model: SettingsModel
 
     var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+        PaneHeader(title: L("Gesture"))
         Form {
             Section(L("Shake while dragging")) {
                 VStack(alignment: .leading) {
@@ -1090,6 +1202,9 @@ struct GestureTab: View {
             }
         }
         .formStyle(.grouped)
+        .clearScrollBackground()
+        .padding(.horizontal, -20)
+        }
     }
 }
 
@@ -1110,6 +1225,7 @@ struct ExcludedApps: View {
                 }
             }
             .frame(minHeight: 80)
+            .clearScrollBackground()
             HStack {
                 Button(L("Add App…")) {
                     let p = NSOpenPanel()
@@ -1155,27 +1271,27 @@ struct ActionsTab: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Picker(L("When dragging"), selection: $kind) {
-                    ForEach(KindKey.allCases.filter { $0 != .none && $0 != .jpeg }, id: \.self) { Text($0.title).tag($0) }
-                }
-                .frame(maxWidth: 320)
-                Spacer()
+        VStack(alignment: .leading, spacing: 14) {
+            PaneHeader(title: L("Commands"), subtitle: L("The wheel you get when you drag this kind of item. Click a slot, then pick its command.")) {
                 Button(L("Reset to Defaults")) { model.update { $0.kindPreferences[kind.rawValue] = nil } }
             }
-            Text(L("The wheel you get when you drag this kind of item. Click a slot, then pick its command."))
-                .font(.caption).foregroundStyle(.secondary)
-            Divider()
-            HStack(alignment: .top, spacing: 24) {
-                VStack {
+            Picker(L("When dragging"), selection: $kind) {
+                ForEach(KindKey.allCases.filter { $0 != .none && $0 != .jpeg }, id: \.self) { Text($0.title).tag($0) }
+            }
+            .frame(maxWidth: 320)
+            HStack(alignment: .top, spacing: 16) {
+                VStack(spacing: 10) {
                     WheelPreview(slots: previewSlots, selected: $selected) { a, b in swapSlots(a, b) }
                     Text(L("Drag one slot onto another to swap them. Two or more items at once use Several items. On the wheel itself, right-click a slot to change it."))
                         .font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.center).frame(width: 280)
                         .fixedSize(horizontal: false, vertical: true)
+                    Spacer(minLength: 0)
                 }
-                Divider()
+                .frame(width: 300)
+                .frame(maxHeight: .infinity)
+                .glassCard(padding: 16)
                 detail.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                    .glassCard(padding: 16)
             }
             HStack {
                 Text(L("Shrink below"))
@@ -1218,6 +1334,7 @@ struct ActionsTab: View {
                     List {
                         ForEach(commands) { a in row(a, slot: i, suggested: m) }
                     }
+                    .clearScrollBackground()
                 }
             } else {
                 VStack(alignment: .leading, spacing: 10) {
@@ -1308,15 +1425,16 @@ struct PacksTab: View {
     @State private var removing: PackManager.Pack?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 14) {
+            PaneHeader(title: L("Packs"), subtitle: L("Installing only downloads files. Each command shows you its scripts and asks before the first run, and again whenever a file changes."))
             HStack {
                 TextField(L("Git URL"), text: $url, prompt: Text("https://github.com/someone/shaken-actions.git"))
+                    .textFieldStyle(.roundedBorder)
                 Button(L("Install")) { model.installPack(url); url = "" }
                     .disabled(url.isEmpty || model.packBusy)
                 if model.packBusy { ProgressView().controlSize(.small) }
             }
-            Text(L("Installing only downloads files. Each command shows you its scripts and asks before the first run, and again whenever a file changes."))
-                .font(.caption).foregroundStyle(.secondary)
+            .glassCard(padding: 12)
             if let m = model.packMessage { Text(m).font(.callout).textSelection(.enabled) }
             if model.packs.isEmpty {
                 VStack(spacing: 10) {
@@ -1327,6 +1445,7 @@ struct PacksTab: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .glassCard(padding: 16)
             } else {
             List {
                 ForEach(model.packs) { pack in
@@ -1358,6 +1477,8 @@ struct PacksTab: View {
                     }
                 }
             }
+            .clearScrollBackground()
+            .glassCard(padding: 4)
             }
         }
         .confirmationDialog(L("Remove the pack “%@”?", removing?.name ?? ""),
@@ -1391,16 +1512,9 @@ struct GeneralTab: View {
     }
 
     var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+        PaneHeader(title: L("General"))
         Form {
-            Toggle(L("Open at login"), isOn: Binding(get: { launchAtLogin }, set: { v in model.app.launchAtLogin = v; launchAtLogin = model.app.launchAtLogin }))
-            Toggle(L("Check for updates automatically"), isOn: model.binding(\.checkForUpdates))
-            LabeledContent(L("Version")) {
-                HStack {
-                    Text(version)
-                    Button(L("Check Now")) { model.app.checkForUpdates() }
-                }
-            }
-            LabeledContent(L("License"), value: "MIT")
             Section(L("Glass")) {
                 Picker(L("Color"), selection: model.binding(\.glassTint)) {
                     Text(L("Mac accent color")).tag(GlassTint.system)
@@ -1428,10 +1542,27 @@ struct GeneralTab: View {
                         .frame(width: 210, height: 56)
                 }
             }
-            Text(L("Shaken watches the mouse with a standard monitor and only reads what you drag after you shake. Snippets, keyboard shortcuts and a few system controls need Accessibility; nothing else needs special permission."))
-                .font(.caption).foregroundStyle(.secondary)
+            Section {
+                Toggle(L("Open at login"), isOn: Binding(get: { launchAtLogin }, set: { v in model.app.launchAtLogin = v; launchAtLogin = model.app.launchAtLogin }))
+                Toggle(L("Check for updates automatically"), isOn: model.binding(\.checkForUpdates))
+                LabeledContent(L("Version")) {
+                    HStack {
+                        Text(version)
+                        Button(L("Check Now")) { model.app.checkForUpdates() }
+                    }
+                }
+                LabeledContent(L("License"), value: "MIT")
+            } footer: {
+                Text(L("Shaken watches the mouse with a standard monitor and only reads what you drag after you shake. Snippets, keyboard shortcuts and a few system controls need Accessibility; nothing else needs special permission."))
+                    .font(.caption).foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
         .formStyle(.grouped)
+        .clearScrollBackground()
+        .padding(.horizontal, -20)
+        }
         .onAppear { launchAtLogin = model.app.launchAtLogin }
     }
 }

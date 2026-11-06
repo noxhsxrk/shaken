@@ -8,14 +8,14 @@ import SwiftUI
 /// what permissions are for, and a couple of preferences. Reopen from Help › Show Welcome.
 final class WelcomeWindowController: NSWindowController {
     init(app: AppController) {
-        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 560, height: 470),
-                              styleMask: [.titled, .closable, .fullSizeContentView], backing: .buffered, defer: false)
-        window.titlebarAppearsTransparent = true
-        window.titleVisibility = .hidden
+        // The view needs a way to close the window, which doesn't exist yet when the view is made.
+        var close: () -> Void = {}
+        let window = GlassWindow.make(size: NSSize(width: 560, height: 490), style: [.closable],
+                                      root: WelcomeView(app: app, close: { close() }))
+        window.title = L("Welcome to Shaken")
         window.isMovableByWindowBackground = true
-        window.isReleasedWhenClosed = false
+        close = { [weak window] in window?.close() }
         super.init(window: window)
-        window.contentView = NSHostingView(rootView: WelcomeView(app: app, close: { [weak window] in window?.close() }))
         window.center()
     }
 
@@ -49,12 +49,13 @@ struct WelcomeView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .padding(.horizontal, 44)
-            .padding(.top, 34)
+            .padding(.top, 30)
 
             HStack {
                 HStack(spacing: 6) {
                     ForEach(0..<pages, id: \.self) { i in
-                        Circle().fill(i == page ? Brand.accentColor : Color.secondary.opacity(0.3)).frame(width: 7, height: 7)
+                        Capsule().fill(i == page ? Brand.accentColor : Color.secondary.opacity(0.3))
+                            .frame(width: i == page ? 18 : 7, height: 7)
                     }
                 }
                 .accessibilityElement()
@@ -67,11 +68,13 @@ struct WelcomeView: View {
                     Button(L("Start Using Shaken")) { finish() }.keyboardShortcut(.defaultAction)
                 }
             }
+            .animation(.easeOut(duration: 0.18), value: page)
             .padding(.horizontal, 24)
             .padding(.vertical, 16)
-            .background(.bar)
+            .overlay(alignment: .top) { Rectangle().fill(Color.primary.opacity(0.08)).frame(height: 1) }
         }
-        .frame(width: 560, height: 470)
+        .frame(width: 560, height: 490)
+        .background(GlassBackdrop())
         .tint(Brand.accentColor)
         .onReceive(timer) { _ in trusted = AXIsProcessTrusted() }
         .onAppear {
@@ -93,6 +96,8 @@ struct WelcomeView: View {
                 step("2", L("Slide onto a slot and let go"))
                 step("3", L("Drag the result chip into the next app. Esc or the undo button takes it back"))
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .glassCard(padding: 16)
             .padding(.top, 4)
             Button(L("Try It with a Sample Photo")) { revealSample() }
                 .help(L("Shows a sample photo in Finder. Drag it and shake."))
@@ -102,7 +107,7 @@ struct WelcomeView: View {
 
     private var keysPage: some View {
         VStack(spacing: 16) {
-            SlotIcon(name: "glyph:Keyboard", size: 38).foregroundStyle(Brand.accentColor)
+            hero { SlotIcon(name: "glyph:Keyboard", size: 30).foregroundStyle(Brand.accentColor) }
             Text(L("No drag? Press a key")).font(.system(size: 26, weight: .bold))
             Text(L("Press %@ anywhere to open the wheel as a launcher: apps, snippets, shortcuts, system controls.", app.store.settings.hotKey.display))
                 .multilineTextAlignment(.center).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
@@ -113,14 +118,18 @@ struct WelcomeView: View {
                 keyRow("⌘← ⌘→", L("Switch wheels (or swipe with two fingers)"))
                 keyRow("Esc", L("Close"))
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .glassCard(padding: 16)
             .padding(.top, 4)
         }
     }
 
     private var permissionPage: some View {
         VStack(spacing: 16) {
-            Image(systemName: trusted ? "checkmark.shield.fill" : "hand.raised.fill")
-                .font(.system(size: 46)).foregroundStyle(trusted ? Color.green : Brand.accentColor)
+            hero {
+                Image(systemName: trusted ? "checkmark.shield.fill" : "hand.raised.fill")
+                    .font(.system(size: 34)).foregroundStyle(trusted ? Color.green : Brand.accentColor)
+            }
             Text(L("Permissions")).font(.system(size: 26, weight: .bold))
             Text(L("Shaking, the wheel, commands, apps, Shortcuts and scripts need no permission at all."))
                 .multilineTextAlignment(.center).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
@@ -136,7 +145,7 @@ struct WelcomeView: View {
 
     private var donePage: some View {
         VStack(spacing: 16) {
-            Image(systemName: "checkmark.circle.fill").font(.system(size: 46)).foregroundStyle(.green)
+            hero { Image(systemName: "checkmark.circle.fill").font(.system(size: 34)).foregroundStyle(.green) }
             Text(L("You're set")).font(.system(size: 26, weight: .bold))
             Text(L("Shaken lives in the menu bar. Set up your wheels in Settings whenever you like."))
                 .multilineTextAlignment(.center).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
@@ -151,6 +160,8 @@ struct WelcomeView: View {
                 }))
             }
             .toggleStyle(.checkbox)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .glassCard(padding: 16)
             .padding(.top, 4)
             Button(L("Open Settings…")) { finish(); app.openSettings() }
         }
@@ -158,19 +169,23 @@ struct WelcomeView: View {
 
     // MARK: pieces
 
+    /// A page's symbol on a tile of the wheel's glass.
+    private func hero<C: View>(@ViewBuilder _ content: () -> C) -> some View {
+        content()
+            .frame(width: 72, height: 72)
+            .glassCard(padding: 0, radius: 20)
+    }
+
     private func step(_ n: String, _ text: String) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 10) {
-            Text(n).font(.system(size: 12, weight: .bold)).foregroundStyle(.white)
-                .frame(width: 20, height: 20).background(Circle().fill(Brand.accentColor))
+            StepBadge(text: n)
             Text(text).fixedSize(horizontal: false, vertical: true)
         }
     }
 
     private func keyRow(_ keys: String, _ text: String) -> some View {
         GridRow {
-            Text(keys).font(.system(.body, design: .rounded).weight(.semibold))
-                .padding(.horizontal, 8).padding(.vertical, 3)
-                .background(RoundedRectangle(cornerRadius: 6).fill(Color.secondary.opacity(0.15)))
+            KeyCap(text: keys)
             Text(text).foregroundStyle(.secondary)
         }
     }
