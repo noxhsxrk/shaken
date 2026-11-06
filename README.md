@@ -11,7 +11,7 @@
 
 <p align="center">
   <a href="https://github.com/noxhsxrk/shaken/releases"><img src="https://img.shields.io/badge/macOS-13%2B-1f2328?logo=apple&logoColor=white" alt="macOS 13+"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-F2613F" alt="MIT license"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-7D89ED" alt="MIT license"></a>
   <img src="https://img.shields.io/badge/Swift-6-F05138?logo=swift&logoColor=white" alt="Swift 6">
   <img src="https://img.shields.io/badge/price-free-2ea44f" alt="Free">
   <img src="https://img.shields.io/badge/account-none%20needed-6e7781" alt="No account needed">
@@ -159,7 +159,7 @@ When something fails, the chip says what went wrong in plain words and stays unt
 
 ## Install
 
-Download the latest DMG from [Releases](https://github.com/noxhsxrk/shaken/releases), drag Shaken to Applications and open it. A wheel icon appears in
+Download the latest DMG from [Releases](https://github.com/noxhsxrk/shaken/releases), drag Shaken to Applications and open it. The Shaken icon appears in
 the menu bar. There is no Dock icon. Opening Shaken again shows Settings.
 
 The current builds aren't notarized by Apple yet, so the first time macOS says it can't check
@@ -184,7 +184,7 @@ permissions, with a sample photo to try it on. Reopen it any time from *Help ›
 | How | What the wheel works on |
 |---|---|
 | Shake while dragging | What you're dragging |
-| ⌃⌥Space (changeable in *Settings → Gesture*) | The shelf if it has anything, otherwise the clipboard |
+| ⌃⌥Space, or any shortcut you record in *Settings → Gesture* | The shelf if it has anything, otherwise the clipboard |
 | ⌥ + shake, with no button pressed | Same as the shortcut |
 | Menu bar → *Open Wheel* | Same as the shortcut |
 
@@ -202,6 +202,7 @@ and selecting text never trigger it.
 | Drop on the centre | Put the item on the shelf. |
 | Rest on a slot marked ••• | Open its submenu. Rest on the centre to go back. |
 | Move out of the wheel | Close it. The drag carries on normally. |
+| Shake while dragging the chip or a shelf tile | Open the wheel again to chain another command, for example shrink, then zip. |
 
 **With the wheel open, nothing dragged**
 
@@ -240,8 +241,8 @@ Six fixed slots, so your hand learns where things are. Change them in *Settings 
 | **Folder** | Opens it in Finder | Copies the files into it (undoable) |
 | **File** | Opens the file | — |
 | **Website** | Opens the page | `{query}` in the address becomes the dragged text or link |
-| **Apple Shortcut** | Runs the Shortcut | Runs it with the dragged items as input |
-| **Shell script** | Runs the zsh code typed into the slot | Files are `$1`, `$2`…; text is in `$SHAKEN_TEXT` |
+| **Apple Shortcut** | Runs the Shortcut; its output lands in the chip | Runs it with the dragged items as input |
+| **Shell script** | Runs the zsh code typed into the slot; files written to `$SHAKEN_OUTPUT` land in the chip | Files are `$1`, `$2`…; text is in `$SHAKEN_TEXT` |
 | **AppleScript** | Runs the script typed into the slot | Files are passed to `on run argv` |
 | **Text snippet** | Pastes the text where you're typing* | — |
 | **Keyboard shortcut** | Presses keys such as `cmd+shift+4` in the front app* | — |
@@ -252,6 +253,10 @@ Six fixed slots, so your hand learns where things are. Change them in *Settings 
 | **Empty** | — | — |
 
 \* Types into other apps, so it needs Accessibility permission. See [Permissions](#permissions).
+
+**Workflows** are edited as a column of cards. Drag a card to reorder it, press its play button to
+try that one step, or **Run All**. A slot that isn't filled in yet keeps its type and shows as
+disabled on the wheel until it's complete.
 
 Snippets restore your previous clipboard afterwards. Keys can be written as `cmd+shift+4`,
 `ctrl+opt+t`, `f5` or `⌃⌥T`. Every slot has a **Run Now** button in Settings so you can try it.
@@ -287,7 +292,8 @@ and Desktop.
 
 **More wheels.** In *Settings → Wheel*, **Add Wheel → Blank Wheel** adds an empty wheel you can
 name and fill however you like ("Media", "Work", "Snippets"). Open the wheel without dragging and
-flip to it with ⌘← / ⌘→ or a two-finger swipe. The arrows next to its name set the order.
+flip to it with ⌘← / ⌘→ or a two-finger swipe. The arrows next to its name set the order, and you
+can record a shortcut that opens the wheel straight on it.
 
 **Per-app wheels.** **Add Wheel → Wheel for an App…** gives an app its own six slots. It
 replaces the main wheel when that app is in front and you open the wheel without dragging.
@@ -299,6 +305,15 @@ file. It can also import one from a file or an https link. Before anything is im
 lists every script, Shortcut, snippet and key press in it, so you can see exactly what it would
 do. A wheel made for one app offers to install as that app's wheel.
 
+**Gallery.** *Settings → Gallery* lists wheels and command packs shared by others, from
+[`gallery/index.json`](gallery/index.json). It starts with Media, Screenshots, Web search and
+System wheels. Adding one goes through the same review as any import. To share your own, see
+[`gallery/README.md`](gallery/README.md).
+
+**App switcher previews.** Turn on *Settings → Gesture → Show window previews* to see the
+highlighted app's front window beside the wheel. It needs Screen Recording permission and
+macOS 14 or later, and is off by default.
+
 ---
 
 ## Built-in commands
@@ -307,8 +322,9 @@ do. A wheel made for one app offers to install as that app's wheel.
 |---|---|
 | One HEIC or PNG | Convert to JPG, Shrink below size limit, Remove metadata, Open in Preview, Copy name |
 | One JPG | Shrink below size limit, Remove metadata, Make PDF, Open in Preview, Copy name |
-| One PDF | Split pages, Open in Preview, Copy name |
-| Several items or a folder | Compress to ZIP, Merge into PDF (images and PDFs only), Copy name |
+| One PDF | Split pages, Open in Preview, Copy name, Compress PDF |
+| Several items or a folder | Compress to ZIP, Merge into PDF (images and PDFs only), Copy name, Rename in bulk |
+| Any image (further down the list) | Resize to 1920 px, 1080 px or 50%, Convert to AVIF, Convert to WebP (needs `brew install webp`) |
 | A link | Open link, Copy link, Make QR code |
 | Text | Save as .txt, Copy text |
 
@@ -317,6 +333,8 @@ do. A wheel made for one app offers to install as that app's wheel.
 - Next to the original, under a free name (`photo.jpg`, `photo 2.jpg`, …). Nothing is ever overwritten.
 - If there is no source folder (file promises, links, text), or the items come from different
   folders, results go to `~/Downloads`.
+- *Rename in bulk* asks for a name and renames the files in place as "Name 01", "Name 02"…
+  Undo puts the old names back.
 - Work happens in a temporary folder. Files move into place only when every step succeeded, and
   the temporary folder is removed on error or cancel. You never get half a result.
 
@@ -401,6 +419,7 @@ Commands in your own Actions folder are yours and run without asking.
 | Shaking a drag, the wheel, chip, shelf, commands, apps, folders, websites, Shortcuts, scripts | Nothing |
 | Text snippets, keyboard shortcuts; brightness, media keys, screenshot and lock screen | Accessibility, asked the first time you use one |
 | The *Dark mode* system control | Permission to control System Events, asked once |
+| Window previews in the app switcher (off by default) | Screen Recording, asked when you turn it on |
 
 Shaken watches the mouse with a standard event monitor and reads the drag only after you shake.
 Global keys use Carbon `RegisterEventHotKey`, which needs no permission.
@@ -439,6 +458,8 @@ Gesture detector -> Drag reader -> Action resolver -> Wheel overlay -> Job runne
 | Shelf | `ShakenCore/Shelf.swift`, `Shaken/ShelfTray.swift` | Items kept by reference in a JSON file. |
 | Slot actions | `ShakenCore/Shortcuts.swift`, `InlineScript.swift`, `KeyCombo.swift`, `SystemControl.swift`, `Shaken/Typing.swift` | Shortcuts through `/usr/bin/shortcuts`, scripts through zsh and `osascript`, keys through `CGEvent`. |
 | Settings | `ShakenCore/Settings.swift`, `WheelPreset.swift` | Versioned `Codable` JSON with stable slot ids, validated on load, save and import. |
+| Look | `Shaken/Brand.swift`, `Resources/Glyphs`, `ShakenAssets/` | Palette, glyphs, app icon and menu bar icon from the Shaken asset kit. |
+| Gallery and updates | `ShakenCore/Gallery.swift`, `UpdateCheck.swift`, `gallery/` | Both read public files from this repository. |
 | Packs | `ShakenCore/PackManager.swift` | Clone, fingerprint, approve, update, remove. |
 
 ---
@@ -455,12 +476,14 @@ Gesture detector -> Drag reader -> Action resolver -> Wheel overlay -> Job runne
 
 **Later**
 
-- A gallery of shared wheels and command packs to browse and install from Settings
-- Window previews in the app switcher. This needs Screen Recording permission, so it would be opt-in.
-- A visual workflow editor with drag-to-reorder and a test run per step
-- More built-in commands: WebP and AVIF, image resize presets, PDF compression, rename in bulk
-- Results from Shortcuts and scripts shown in the chip, so they can be dragged onward too
-- Drag the result chip back onto the wheel to chain another command
+- More command packs in the gallery, and a way to rate them
+- Rename in bulk with patterns (dates, counters in other positions)
+- Video and audio results in the chip shown with a preview
+- Window previews for macOS 13
+
+**Done since the first release:** gallery, window previews, visual workflow editor, WebP and AVIF,
+resize presets, PDF compression, bulk rename, Shortcut and script results in the chip, and
+chaining commands from the chip.
 
 **Not planned**
 

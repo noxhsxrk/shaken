@@ -2,6 +2,22 @@
 
 All notable changes to Shaken. Versions follow [Semantic Versioning](https://semver.org).
 
+## Unreleased
+
+### Added
+- New look from the Shaken asset kit: app icon, menu bar icon, 16 command glyphs, and a periwinkle and navy palette across the wheel, chip, shelf tray, Settings and welcome window. The wheel follows the kit's geometry.
+- Record any keyboard shortcut to open the wheel, and give each blank wheel its own shortcut.
+- Settings › Gallery: shared wheels (Media, Screenshots, Web search, System) and command packs.
+- Optional window previews in the app switcher (Screen Recording, macOS 14+).
+- Visual workflow editor: cards you drag to reorder, a play button per step, Run All.
+- Commands: Convert to AVIF, Convert to WebP, Resize to 1920 px / 1080 px / 50%, Compress PDF, Rename in bulk (with undo).
+- Shortcut output and files scripts write to `$SHAKEN_OUTPUT` appear in the chip.
+- Shake while dragging the chip or a shelf tile to chain another command.
+- Designed installer window.
+
+### Fixed
+- Choosing App, File or Keyboard shortcut for a slot no longer snaps back to Empty before it's filled in.
+
 ## 0.1.1 - 2026-11-06
 
 ### Added
